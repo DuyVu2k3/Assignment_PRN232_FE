@@ -1,6 +1,7 @@
-import { AUTH_API_CONFIG, buildAuthUrl, type AuthEndpointKey } from '../config/authApiConfig';
+import { buildAuthUrl, type AuthEndpointKey } from '../config/authApiConfig';
+import { requestJson } from '../http/requestJson';
 
-export type UserRole = 'Admin' | 'Manager' | 'Examiner';
+export type UserRole = 'Admin' | 'Manager' | 'Examiner' | 'Moderator';
 
 export interface AuthUser {
   id: string | number;
@@ -30,11 +31,21 @@ export interface CreateUserRequest {
   role: UserRole;
 }
 
-export interface AuthTokenResponse {
+/** Phản hồi chuẩn POST /api/auth/login (JWT Bearer, không cookie). */
+export interface LoginTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresAt: string;
+  refreshTokenExpiresAt: string;
+  tokenType: string;
+}
+
+/** Đăng ký / các endpoint khác có thể trả thêm biến thể (tương thích cũ). */
+export interface AuthTokenResponse extends Partial<LoginTokenResponse> {
   token?: string;
-  accessToken?: string;
   jwtToken?: string;
-  refreshToken?: string;
+  access_token?: string;
+  jwt?: string;
   user?: AuthUser;
 }
 
@@ -44,67 +55,48 @@ export interface RefreshTokenResponse {
   refreshToken?: string;
 }
 
-type RequestOptions = {
-  method: 'GET' | 'POST';
-  endpoint: AuthEndpointKey;
-  body?: unknown;
-  token?: string;
-};
-
-const request = async <T>({ method, endpoint, body, token }: RequestOptions): Promise<T> => {
-  const hasBody = body !== undefined;
-
-  const response = await fetch(buildAuthUrl(endpoint), {
-    method,
-    credentials: 'include',
-    headers: {
-      ...(hasBody ? AUTH_API_CONFIG.defaultHeaders : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: hasBody ? JSON.stringify(body) : undefined,
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-
-    try {
-      const errorData = await response.json();
-      if (typeof errorData?.message === 'string') {
-        message = errorData.message;
-      }
-    } catch {
-      // Ignore parsing error and keep fallback message.
-    }
-
-    throw new Error(message);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  const contentType = response.headers.get('content-type') ?? '';
-
-  if (contentType.includes('application/json')) {
-    return (await response.json()) as T;
-  }
-
-  return (await response.text()) as T;
-};
+const authUrl = (key: AuthEndpointKey) => buildAuthUrl(key);
 
 export const authService = {
   register: (payload: RegisterRequest) =>
-    request<AuthTokenResponse>({ method: 'POST', endpoint: 'register', body: payload }),
+    requestJson<AuthTokenResponse>({
+      url: authUrl('register'),
+      method: 'POST',
+      body: payload,
+      withAuth: false,
+    }),
 
   login: (payload: LoginRequest) =>
-    request<AuthTokenResponse>({ method: 'POST', endpoint: 'login', body: payload }),
+    requestJson<LoginTokenResponse>({
+      url: authUrl('login'),
+      method: 'POST',
+      body: payload,
+      withAuth: false,
+    }),
 
-  createUser: (payload: CreateUserRequest, token: string) =>
-    request<AuthUser>({ method: 'POST', endpoint: 'users', body: payload, token }),
+  createUser: (payload: CreateUserRequest) =>
+    requestJson<AuthUser>({
+      url: authUrl('users'),
+      method: 'POST',
+      body: payload,
+    }),
 
-  getMe: (token: string) => request<AuthUser>({ method: 'GET', endpoint: 'me', token }),
+  getMe: () =>
+    requestJson<AuthUser>({
+      url: authUrl('me'),
+      method: 'GET',
+    }),
 
-  refresh: () => request<RefreshTokenResponse>({ method: 'POST', endpoint: 'refresh' }),
+  refresh: () =>
+    requestJson<RefreshTokenResponse>({
+      url: authUrl('refresh'),
+      method: 'POST',
+      withAuth: false,
+    }),
 
-  logout: (token?: string) => request<void>({ method: 'POST', endpoint: 'logout', token }),
+  logout: () =>
+    requestJson<void>({
+      url: authUrl('logout'),
+      method: 'POST',
+    }),
 };

@@ -7,7 +7,7 @@ export function DashboardPage() {
 
   const stats = [
     {
-      title: "Tổng số đề thi",
+      title: "Tổng số kỳ thi",
       value: "--",
       icon: FileText,
       color: "text-blue-600",

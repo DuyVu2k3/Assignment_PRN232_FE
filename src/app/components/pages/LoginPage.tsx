@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
@@ -15,7 +15,7 @@ export function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     setIsLoading(true);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { mockSubmissionBatches } from "../../data/mockData";
 import { mockSubmissions } from "../../data/mockData";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -82,8 +83,20 @@ export function SubmissionsPage() {
         <div>
           <h1>Quản lý Bài thi</h1>
           <p className="text-gray-600 mt-1">
-            Xem và chấm điểm các bài thi đã nộp
+            PRN232 — chấm từng entry hoặc mở bảng theo batch (cột StudentCode + từng tiêu chí
+            rubric, nhập như Excel).
           </p>
+          {mockSubmissionBatches[0] ? (
+            <p className="text-sm text-muted-foreground mt-2">
+              <Link
+                to={`/batches/${mockSubmissionBatches[0].id}/grade`}
+                state={{ from: "/submissions" }}
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Bảng chấm batch mẫu ({mockSubmissionBatches[0].id})
+              </Link>
+            </p>
+          ) : null}
         </div>
         <Button>
           <Upload className="size-4 mr-2" />
@@ -106,7 +119,7 @@ export function SubmissionsPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
           <Input
-            placeholder="Tìm kiếm theo tên, mã học sinh, đề thi..."
+            placeholder="Tìm theo tên, MSSV, kỳ thi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -137,9 +150,9 @@ export function SubmissionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mã học sinh</TableHead>
+                <TableHead>Mã SV (StudentCode)</TableHead>
                 <TableHead>Tên học sinh</TableHead>
-                <TableHead>Đề thi</TableHead>
+                <TableHead>Kỳ thi</TableHead>
                 <TableHead>Thời gian nộp</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Điểm</TableHead>
@@ -170,7 +183,7 @@ export function SubmissionsPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {submission.status !== "Graded" && (
-                        <Link to={`/submissions/${submission.id}/grade`}>
+                        <Link to={`/submissions/${submission.id}/grade`} state={{ from: "/submissions" }}>
                           <Button variant="outline" size="sm">
                             Chấm điểm
                           </Button>

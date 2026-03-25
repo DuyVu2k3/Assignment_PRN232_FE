@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { GraduationCap, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
-type RoleOption = "Admin" | "Manager" | "Examiner";
+type RoleOption = "Admin" | "Manager" | "Examiner" | "Moderator";
 
 export function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -49,7 +49,7 @@ export function RegisterPage() {
         navigate("/");
       }, 800);
     } catch (error) {
-      toast.error("Đăng ký thất bại. Vui lòng thử lại.");
+      toast.error(error instanceof Error ? error.message : "Đăng ký thất bại. Vui lòng thử lại.");
       console.error("Registration failed:", error);
     } finally {
       setIsLoading(false);
@@ -65,7 +65,7 @@ export function RegisterPage() {
           </div>
           <CardTitle>Đăng ký tài khoản</CardTitle>
           <CardDescription>
-            Tạo tài khoản cho Admin, Manager hoặc Examiner để chấm bài thi
+            Tạo tài khoản theo vai trò được phép (Admin, Manager, Examiner, Moderator)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -106,6 +106,7 @@ export function RegisterPage() {
                 <SelectContent>
                   <SelectItem value="Examiner">Examiner (Giáo viên chấm thi)</SelectItem>
                   <SelectItem value="Manager">Manager (Quản lý)</SelectItem>
+                  <SelectItem value="Moderator">Moderator (Upload & kiểm duyệt)</SelectItem>
                   <SelectItem value="Admin">Admin (Quản trị viên)</SelectItem>
                 </SelectContent>
               </Select>

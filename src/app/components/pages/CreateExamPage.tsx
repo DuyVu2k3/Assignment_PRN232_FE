@@ -14,16 +14,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { ArrowLeft } from "lucide-react";
 
-const subjects = [
-  "Toán học",
-  "Vật lý",
-  "Hóa học",
-  "Sinh học",
-  "Tiếng Anh",
-  "Văn học",
-  "Lịch sử",
-  "Địa lý",
-];
+/** Demo tập trung PRN232. */
+const subjects = ["PRN232"];
 
 export function CreateExamPage() {
   const navigate = useNavigate();
@@ -54,26 +46,26 @@ export function CreateExamPage() {
           </Button>
         </Link>
         <div>
-          <h1>Tạo đề thi mới</h1>
+          <h1>Tạo kỳ thi mới (Exam)</h1>
           <p className="text-gray-600 mt-1">
-            Điền thông tin để tạo đề thi mới
+            Kỳ thi = đợt thi (vd PRN232 PE · SU25 · Block 10w), không phải mã đề.
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Thông tin đề thi</CardTitle>
+          <CardTitle>Thông tin kỳ thi</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="title">
-                Tên đề thi <span className="text-red-500">*</span>
+                Tên kỳ thi <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="title"
-                placeholder="VD: Kỳ thi giữa kỳ môn Toán học"
+                placeholder="VD: PE PRN232 — SU25 · Block 10w"
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -110,7 +102,7 @@ export function CreateExamPage() {
               <Label htmlFor="description">Mô tả</Label>
               <Textarea
                 id="description"
-                placeholder="Mô tả chi tiết về đề thi..."
+                placeholder="Mô tả đợt kỳ thi, block, lớp giảng viên…"
                 rows={4}
                 value={formData.description}
                 onChange={(e) =>
@@ -154,7 +146,7 @@ export function CreateExamPage() {
             </div>
 
             <div className="flex items-center gap-3 pt-4 border-t">
-              <Button type="submit">Tạo đề thi</Button>
+              <Button type="submit">Tạo kỳ thi</Button>
               <Link to="/exams">
                 <Button type="button" variant="outline">
                   Hủy
