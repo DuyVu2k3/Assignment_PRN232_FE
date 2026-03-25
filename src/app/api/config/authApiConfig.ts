@@ -1,5 +1,5 @@
 export const AUTH_API_CONFIG = {
-  baseUrl: import.meta.env.VITE_USER_API_BASE_URL ?? '',
+  baseUrl: 'https://localhost:7159',
   endpoints: {
     register: '/api/auth/register',
     login: '/api/auth/login',
