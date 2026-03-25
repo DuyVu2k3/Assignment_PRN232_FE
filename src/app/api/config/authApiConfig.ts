@@ -1,5 +1,5 @@
 export const AUTH_API_CONFIG = {
-  baseUrl: 'https://localhost:7159',
+  baseUrl: '',
   endpoints: {
     register: '/api/auth/register',
     login: '/api/auth/login',
