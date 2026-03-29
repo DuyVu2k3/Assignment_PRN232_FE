@@ -59,6 +59,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/submission-batches': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/submission-batches': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
       '/assigned-examiners': {
         target: 'http://localhost:7003',
         changeOrigin: true,

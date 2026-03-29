@@ -3,6 +3,7 @@ export {
   UserRole,
   ExamStatus,
   SubmissionBatchStatus,
+  SubmissionBatchPipelineStatus,
   SubmissionEntryStatus,
   SubmissionAssetKind,
   ViolationSeverity,

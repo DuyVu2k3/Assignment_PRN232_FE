@@ -19,6 +19,14 @@ export enum SubmissionBatchStatus {
   Failed = 'Failed',
 }
 
+/** Trạng thái pipeline batch từ API /submission-batches (số). */
+export enum SubmissionBatchPipelineStatus {
+  PendingExtraction = 0,
+  Processing = 1,
+  Completed = 2,
+  Failed = 3,
+}
+
 /** Trạng thái entry / hiển thị bài trên UI chấm điểm. */
 export enum SubmissionEntryStatus {
   Pending = 'Pending',
