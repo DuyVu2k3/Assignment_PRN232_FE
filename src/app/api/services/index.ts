@@ -1,4 +1,5 @@
 export * from './authService';
+export * from './usersService';
 export {
   api,
   requestJson,

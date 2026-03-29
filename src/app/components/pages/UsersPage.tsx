@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { mockUsers } from "../../data/mockData";
+import React, { useEffect, useMemo, useState } from "react";
+import { usersService, type UserListItem } from "../../api/services";
+import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -12,19 +13,78 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { Plus, Search, Mail, UserCheck } from "lucide-react";
+import { Search, Mail, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
 export function UsersPage() {
+  const token = useAuthStore((state) => state.token);
   const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  const [hasNext, setHasNext] = useState(false);
 
-  const filteredUsers = mockUsers.filter(
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const result = await usersService.getUsers({ pageNumber, pageSize, token: token ?? undefined });
+
+        if (!isMounted) {
+          return;
+        }
+
+        setUsers(result.data ?? []);
+        setTotalItems(result.totalItems ?? 0);
+        setTotalPages(result.totalPages ?? 0);
+        setHasPrevious(Boolean(result.hasPrevious));
+        setHasNext(Boolean(result.hasNext));
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setUsers([]);
+        setErrorMessage(error instanceof Error ? error.message : "Không tải được danh sách người dùng");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pageNumber, pageSize, token]);
+
+  const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const roleCounts = useMemo(() => {
+    return {
+      admin: users.filter((u) => u.role === "Admin").length,
+      manager: users.filter((u) => u.role === "Manager").length,
+      examiner: users.filter((u) => u.role === "Examiner").length,
+      moderator: users.filter((u) => u.role === "Moderator").length,
+    };
+  }, [users]);
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -44,35 +104,35 @@ export function UsersPage() {
   const stats = [
     {
       label: "Tổng người dùng",
-      value: mockUsers.length,
+      value: totalItems,
       icon: UserCheck,
       color: "text-blue-600",
       bg: "bg-blue-50",
     },
     {
       label: "Admin",
-      value: mockUsers.filter((u) => u.role === "Admin").length,
+      value: roleCounts.admin,
       icon: UserCheck,
       color: "text-red-600",
       bg: "bg-red-50",
     },
     {
       label: "Manager",
-      value: mockUsers.filter((u) => u.role === "Manager").length,
+      value: roleCounts.manager,
       icon: UserCheck,
       color: "text-blue-600",
       bg: "bg-blue-50",
     },
     {
       label: "Examiner",
-      value: mockUsers.filter((u) => u.role === "Examiner").length,
+      value: roleCounts.examiner,
       icon: UserCheck,
       color: "text-gray-600",
       bg: "bg-gray-50",
     },
     {
       label: "Moderator",
-      value: mockUsers.filter((u) => u.role === "Moderator").length,
+      value: roleCounts.moderator,
       icon: UserCheck,
       color: "text-amber-600",
       bg: "bg-amber-50",
@@ -85,13 +145,20 @@ export function UsersPage() {
         <div>
           <h1>Quản lý Người dùng</h1>
           <p className="text-gray-600 mt-1">
-            Quản lý người dùng và phân quyền trong hệ thống
+            Quản lý người dùng và phân quyền trong hệ thống (dữ liệu từ API)
           </p>
         </div>
-        <Button>
-          <Plus className="size-4 mr-2" />
-          Thêm người dùng
-        </Button>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={pageSize}
+            onChange={(e) => setPageSize(Math.max(1, Number(e.target.value) || 10))}
+            className="w-24"
+          />
+          <span className="text-sm text-gray-500">mỗi trang</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -127,15 +194,17 @@ export function UsersPage() {
           <CardTitle>Danh sách người dùng</CardTitle>
         </CardHeader>
         <CardContent>
+          {isLoading ? <p className="text-sm text-gray-500 mb-4">Đang tải dữ liệu...</p> : null}
+          {errorMessage ? <p className="text-sm text-red-600 mb-4">{errorMessage}</p> : null}
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Tên</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Vai trò</TableHead>
-                <TableHead>Kỳ thi được phân công</TableHead>
+                <TableHead>Trạng thái</TableHead>
                 <TableHead>Ngày tạo</TableHead>
-                <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -150,33 +219,43 @@ export function UsersPage() {
                   </TableCell>
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
                   <TableCell>
-                    {user.role === "Examiner" ? (
-                      <span className="font-medium">{user.assignedExams}</span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
+                    <Badge variant={user.isActive ? "default" : "secondary"}>
+                      {user.isActive ? "Active" : "Inactive"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {format(new Date(user.createdAt), "dd/MM/yyyy", {
                       locale: vi,
                     })}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        Chỉnh sửa
-                      </Button>
-                      {user.role === "Examiner" && (
-                        <Button variant="ghost" size="sm">
-                          Phân công
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              Trang {pageNumber}/{Math.max(totalPages, 1)} - Tổng {totalItems} người dùng
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasPrevious || isLoading}
+                onClick={() => setPageNumber((prev) => Math.max(1, prev - 1))}
+              >
+                Trước
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasNext || isLoading}
+                onClick={() => setPageNumber((prev) => prev + 1)}
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

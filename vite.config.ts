@@ -19,8 +19,28 @@ export default defineConfig({
 
   server: {
     proxy: {
-      '/api': {
-        target: 'https://localhost:7159',
+      '/api/auth': {
+        target: 'http://localhost:7001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/users': {
+        target: 'http://localhost:7001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/exams': {
+        target: 'http://localhost:7002',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/submissions': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/submission-files': {
+        target: 'http://localhost:7003',
         changeOrigin: true,
         secure: false,
       },
