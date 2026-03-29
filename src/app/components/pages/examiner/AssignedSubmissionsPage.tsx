@@ -6,10 +6,10 @@ import {
   getSubmissionFileById,
   getRubricsForExam,
   mockExams,
-} from "../../data/mockData";
-import { useAuthStore } from "../../store/authStore";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+} from "../../../data/mockData";
+import { useAuthStore } from "../../../store/authStore";
+import { Button } from "../../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { ClipboardList, Table2 } from "lucide-react";
 
 export function AssignedSubmissionsPage() {

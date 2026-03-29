@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { examsService, semestersService, type Semester } from "../../api/services";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+import { examsService, semestersService, type Semester } from "../../../api/services";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+} from "../../ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 

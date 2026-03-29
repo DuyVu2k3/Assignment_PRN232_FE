@@ -1,7 +1,7 @@
 import React from "react";
-import { mockExams, mockSubmissionAssets, mockSubmissionEntries, mockSubmissionViolations } from "../../data/mockData";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
+import { mockExams, mockSubmissionAssets, mockSubmissionEntries, mockSubmissionViolations } from "../../../data/mockData";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
 import {
   Table,
   TableBody,
@@ -9,9 +9,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { AlertTriangle } from "lucide-react";
-import { ViolationSeverity } from "../../types/enums";
+import { ViolationSeverity } from "../../../types/enums";
 
 const severityVariant = (s: ViolationSeverity | string) => {
   if (s === ViolationSeverity.Error) return "destructive" as const;

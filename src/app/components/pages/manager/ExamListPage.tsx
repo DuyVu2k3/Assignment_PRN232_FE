@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { examsService, type Exam } from "../../api/services";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Card, CardContent } from "../ui/card";
+import { examsService, type Exam } from "../../../api/services";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Card, CardContent } from "../../ui/card";
 import { Plus, Search, Calendar, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 

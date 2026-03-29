@@ -6,18 +6,18 @@ import {
   type Exam,
   type ExamExaminerAssignment,
   type UserListItem,
-} from "../../api/services";
-import { UserRole } from "../../types/enums";
-import { useAuthStore } from "../../store/authStore";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
+} from "../../../api/services";
+import { UserRole } from "../../../types/enums";
+import { useAuthStore } from "../../../store/authStore";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Button } from "../../ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "../../ui/select";
 import {
   Table,
   TableBody,
@@ -25,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { Plus, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 

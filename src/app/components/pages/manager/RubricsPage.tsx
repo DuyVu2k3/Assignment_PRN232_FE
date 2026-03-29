@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { examsService, rubricsService, type Exam, type Rubric } from "../../api/services";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+import { examsService, rubricsService, type Exam, type Rubric } from "../../../api/services";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "../../ui/select";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { ArrowDown, ArrowUp, ListChecks, Pencil, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 

@@ -4,9 +4,9 @@ import {
   getSubmissionFileById,
   mockExams,
   mockSubmissionBatches,
-} from "../../data/mockData";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+} from "../../../data/mockData";
+import { Button } from "../../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { Table2 } from "lucide-react";
 
 export function BatchesStatusPage() {

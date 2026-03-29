@@ -1,6 +1,6 @@
-import { EXAMPLE_PRN232_ARCHIVE_NAME } from "../../data/mockData";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
+import { EXAMPLE_PRN232_ARCHIVE_NAME } from "../../../data/mockData";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { Button } from "../../ui/button";
 import { UploadCloud, FileArchive } from "lucide-react";
 
 export function UploadBatchPage() {
