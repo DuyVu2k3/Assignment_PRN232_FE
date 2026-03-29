@@ -16,3 +16,4 @@ export * from './examExaminersService';
 export * from './submissionFilesService';
 export * from './assignedExaminerService';
 export * from './submissionBatchesService';
+export * from './gradeEntriesService';

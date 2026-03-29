@@ -69,6 +69,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/grade-entries': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/grade-entries': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
       '/assigned-examiners': {
         target: 'http://localhost:7003',
         changeOrigin: true,
