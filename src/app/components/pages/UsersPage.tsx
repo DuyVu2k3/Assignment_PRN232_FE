@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { usersService, type UserListItem } from "../../api/services";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { authService, usersService, type UserListItem } from "../../api/services";
+import { HttpRequestError } from "../../api/http/requestJson";
 import { UserRole } from "../../types/enums";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
@@ -14,12 +16,30 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { Search, Mail, UserCheck } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Search, Mail, UserCheck, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { toast } from "sonner";
 
 export function UsersPage() {
   const token = useAuthStore((state) => state.token);
+  const currentUser = useAuthStore((state) => state.user);
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,51 +51,44 @@ export function UsersPage() {
   const [hasPrevious, setHasPrevious] = useState(false);
   const [hasNext, setHasNext] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: UserRole.Examiner,
+  });
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [togglingUserId, setTogglingUserId] = useState<number | null>(null);
 
-    const fetchUsers = async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
 
-      try {
-        const result = await usersService.getUsers({ pageNumber, pageSize, token: token ?? undefined });
-
-        if (!isMounted) {
-          return;
-        }
-
-        setUsers(result.data ?? []);
-        setTotalItems(result.totalItems ?? 0);
-        setTotalPages(result.totalPages ?? 0);
-        setHasPrevious(Boolean(result.hasPrevious));
-        setHasNext(Boolean(result.hasNext));
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setUsers([]);
-        setErrorMessage(error instanceof Error ? error.message : "Không tải được danh sách người dùng");
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchUsers();
-
-    return () => {
-      isMounted = false;
-    };
+    try {
+      const result = await usersService.getUsers({ pageNumber, pageSize, token: token ?? undefined });
+      setUsers(result.data ?? []);
+      setTotalItems(result.totalItems ?? 0);
+      setTotalPages(result.totalPages ?? 0);
+      setHasPrevious(Boolean(result.hasPrevious));
+      setHasNext(Boolean(result.hasNext));
+    } catch (error) {
+      setUsers([]);
+      setErrorMessage(error instanceof Error ? error.message : "Không tải được danh sách người dùng");
+    } finally {
+      setIsLoading(false);
+    }
   }, [pageNumber, pageSize, token]);
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
 
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchQuery.toLowerCase())
+      String(user.role).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const roleCounts = useMemo(() => {
@@ -99,6 +112,50 @@ export function UsersPage() {
         return <Badge variant="outline">Moderator</Badge>;
       default:
         return <Badge>{role}</Badge>;
+    }
+  };
+
+  const isSameUser = (row: UserListItem) =>
+    currentUser != null && String(currentUser.id) === String(row.id);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (addForm.password.length < 6) {
+      toast.error("Mật khẩu tối thiểu 6 ký tự");
+      return;
+    }
+
+    setAddSubmitting(true);
+    try {
+      await authService.createUser({
+        name: addForm.name.trim(),
+        email: addForm.email.trim(),
+        password: addForm.password,
+        role: addForm.role,
+      });
+      toast.success("Đã tạo người dùng");
+      setAddOpen(false);
+      setAddForm({ name: "", email: "", password: "", role: UserRole.Examiner });
+      setPageNumber(1);
+      await fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof HttpRequestError ? err.message : "Tạo người dùng thất bại");
+    } finally {
+      setAddSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async (row: UserListItem) => {
+    const next = !row.isActive;
+    setTogglingUserId(row.id);
+    try {
+      await usersService.updateUserStatus(row.id, next);
+      toast.success(next ? "Đã kích hoạt tài khoản" : "Đã vô hiệu hóa tài khoản");
+      await fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof HttpRequestError ? err.message : "Cập nhật trạng thái thất bại");
+    } finally {
+      setTogglingUserId(null);
     }
   };
 
@@ -142,23 +199,14 @@ export function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1>Quản lý Người dùng</h1>
           <p className="text-gray-600 mt-1">
-            Quản lý người dùng và phân quyền trong hệ thống (dữ liệu từ API)
+            Thêm user (POST /api/auth/users); kích hoạt / vô hiệu hóa:{" "}
+            <span className="font-mono text-xs">PATCH /api/users/{"{id}"}/status</span> với{" "}
+            <span className="font-mono text-xs">{"{ isActive: true }"}</span>.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            min={1}
-            max={100}
-            value={pageSize}
-            onChange={(e) => setPageSize(Math.max(1, Number(e.target.value) || 10))}
-            className="w-24"
-          />
-          <span className="text-sm text-gray-500">mỗi trang</span>
         </div>
       </div>
 
@@ -178,8 +226,8 @@ export function UsersPage() {
         ))}
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-wrap items-center gap-4 w-full">
+        <div className="relative flex-1 min-w-[12rem] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
           <Input
             placeholder="Tìm kiếm người dùng..."
@@ -187,6 +235,93 @@ export function UsersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={pageSize}
+            onChange={(e) => setPageSize(Math.max(1, Number(e.target.value) || 10))}
+            className="w-24"
+          />
+          <span className="text-sm text-gray-500">mỗi trang</span>
+        </div>
+
+        <div className="ml-auto shrink-0">
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button type="button">
+                <UserPlus className="size-4 mr-2" />
+                Thêm người dùng
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <form onSubmit={handleCreateUser}>
+                <DialogHeader>
+                  <DialogTitle>Thêm người dùng</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-name">Họ tên</Label>
+                    <Input
+                      id="add-name"
+                      value={addForm.name}
+                      onChange={(e) => setAddForm((s) => ({ ...s, name: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-email">Email</Label>
+                    <Input
+                      id="add-email"
+                      type="email"
+                      value={addForm.email}
+                      onChange={(e) => setAddForm((s) => ({ ...s, email: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-password">Mật khẩu</Label>
+                    <Input
+                      id="add-password"
+                      type="password"
+                      minLength={6}
+                      value={addForm.password}
+                      onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vai trò</Label>
+                    <Select
+                      value={addForm.role}
+                      onValueChange={(v) => setAddForm((s) => ({ ...s, role: v as UserRole }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UserRole.Examiner}>Examiner</SelectItem>
+                        <SelectItem value={UserRole.Manager}>Manager</SelectItem>
+                        <SelectItem value={UserRole.Moderator}>Moderator</SelectItem>
+                        <SelectItem value={UserRole.Admin}>Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                    Hủy
+                  </Button>
+                  <Button type="submit" disabled={addSubmitting}>
+                    {addSubmitting ? "Đang tạo…" : "Tạo"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -204,33 +339,61 @@ export function UsersPage() {
                 <TableHead>Tên</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Vai trò</TableHead>
-                <TableHead>Kỳ thi được phân công</TableHead>
+                <TableHead>Kích hoạt</TableHead>
                 <TableHead>Ngày tạo</TableHead>
+                <TableHead className="text-right w-[200px]">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Mail className="size-4 text-gray-400" />
-                      {user.email}
-                    </div>
-                  </TableCell>
-                  <TableCell>{getRoleBadge(user.role)}</TableCell>
-                  <TableCell>
-                    <Badge variant={user.isActive ? "default" : "secondary"}>
-                      {user.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(user.createdAt), "dd/MM/yyyy", {
-                      locale: vi,
-                    })}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredUsers.map((user) => {
+                const busy = togglingUserId === user.id;
+                const self = isSameUser(user);
+                return (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Mail className="size-4 text-gray-400 shrink-0" />
+                        {user.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getRoleBadge(String(user.role))}</TableCell>
+                    <TableCell>
+                      <Badge variant={user.isActive ? "default" : "secondary"}>
+                        {user.isActive ? "Đang hoạt động" : "Đã khóa"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(user.createdAt), "dd/MM/yyyy", {
+                        locale: vi,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {user.isActive ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy || self}
+                          title={self ? "Không thể tự vô hiệu hóa chính mình" : undefined}
+                          onClick={() => void handleToggleActive(user)}
+                        >
+                          {busy ? "…" : "Vô hiệu hóa"}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => void handleToggleActive(user)}
+                        >
+                          {busy ? "…" : "Kích hoạt"}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
 
@@ -260,7 +423,7 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
-      {filteredUsers.length === 0 && (
+      {filteredUsers.length === 0 && !isLoading && (
         <div className="text-center py-12">
           <p className="text-gray-500">Không tìm thấy người dùng nào</p>
         </div>

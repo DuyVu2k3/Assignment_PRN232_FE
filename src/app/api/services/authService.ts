@@ -29,6 +29,7 @@ export interface CreateUserRequest {
   email: string;
   password: string;
   name: string;
+  /** Chuỗi theo enum, ví dụ `UserRole.Admin` → `"Admin"`. */
   role: UserRole;
 }
 
