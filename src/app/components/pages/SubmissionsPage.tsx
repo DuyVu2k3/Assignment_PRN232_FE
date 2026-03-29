@@ -116,10 +116,6 @@ export function SubmissionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1>Quản lý Bài thi</h1>
-          <p className="text-gray-600 mt-1">
-            PRN232 — chấm từng entry hoặc mở bảng theo batch (cột StudentCode + từng tiêu chí
-            rubric, nhập như Excel).
-          </p>
           {mockSubmissionBatches[0] ? (
             <p className="text-sm text-muted-foreground mt-2">
               <Link

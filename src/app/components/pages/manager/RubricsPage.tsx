@@ -268,7 +268,6 @@ export function RubricsPage() {
     <div className="space-y-6">
       <div>
         <h1>Rubric - tiêu chí chấm</h1>
-        <p className="text-gray-600 mt-1">Manager quản lý rubric bằng API: GET/POST /api/exams/{'{examId}'}/rubrics, PUT/DELETE /api/rubrics/{'{id}'}</p>
       </div>
 
       <Card>

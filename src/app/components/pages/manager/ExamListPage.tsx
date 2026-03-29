@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { HttpRequestError } from "../../../api/http/requestJson";
 import { examsService, type Exam } from "../../../api/services";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Card, CardContent } from "../../ui/card";
 import { Plus, Search, Calendar, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { EditExamModal } from "../../modals/EditExamModal";
 
 const formatDateTime = (value: string) => {
   const date = new Date(value);
@@ -21,6 +22,13 @@ export function ExamListPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+
+  const [modal, setModal] = useState<
+    | null
+    | { type: "create" }
+    | { type: "edit"; exam: Exam }
+  >(null);
 
   const loadExams = async () => {
     setIsLoading(true);
@@ -65,28 +73,44 @@ export function ExamListPage() {
     });
   }, [filteredExams]);
 
+  const handleDelete = async (id: number) => {
+    const confirmed = window.confirm("Bạn có chắc chắn muốn xóa kỳ thi này?");
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingId(id);
+    try {
+      await examsService.deleteExam(id);
+      setExams((prev) => prev.filter((e) => e.id !== id));
+
+      if (modal?.type === "edit" && modal.exam.id === id) {
+        setModal(null);
+      }
+
+      toast.success("Xóa kỳ thi thành công");
+    } catch (error) {
+      toast.error(error instanceof HttpRequestError ? error.message : "Xóa kỳ thi thất bại");
+    } finally {
+      setIsDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1>Quản lý kỳ thi (Exam)</h1>
-          <p className="text-gray-600 mt-1">Manager xem danh sách kỳ thi từ API GET /api/exams</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={loadExams} disabled={isLoading}>
             <RefreshCw className="size-4 mr-2" />
             {isLoading ? "Đang tải..." : "Tải lại"}
           </Button>
-          <Link to="/exams/new">
-            <Button>
-              <Plus className="size-4 mr-2" />
-              Tạo kỳ thi mới
-            </Button>
-          </Link>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
           <Input
@@ -96,6 +120,10 @@ export function ExamListPage() {
             className="pl-10"
           />
         </div>
+        <Button type="button" onClick={() => setModal({ type: "create" })} className="flex-none">
+          <Plus className="size-4 mr-2" />
+          Tạo kỳ thi mới
+        </Button>
       </div>
 
       {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
@@ -121,11 +149,22 @@ export function ExamListPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Link to={`/exams/${exam.id}`} className="flex-1">
-                  <Button variant="outline" className="w-full">
-                    Xem chi tiết
-                  </Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setModal({ type: "edit", exam })}
+                  className="flex-1"
+                >
+                  Sửa
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDelete(exam.id)}
+                  disabled={isDeletingId === exam.id}
+                >
+                  {isDeletingId === exam.id ? "Đang xóa..." : "Xóa"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -137,6 +176,23 @@ export function ExamListPage() {
           <p className="text-gray-500">Chưa có kỳ thi nào</p>
         </div>
       ) : null}
+
+      <EditExamModal
+        open={modal !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setModal(null);
+          }
+        }}
+        exam={modal?.type === "edit" ? modal.exam : null}
+        onSuccess={(updated, mode) => {
+          if (mode === "create") {
+            setExams((prev) => [updated, ...prev]);
+          } else {
+            setExams((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+          }
+        }}
+      />
     </div>
   );
 }

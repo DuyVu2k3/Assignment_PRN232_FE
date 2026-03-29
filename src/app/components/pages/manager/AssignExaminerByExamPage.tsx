@@ -173,7 +173,6 @@ export function AssignExaminerByExamPage() {
     <div className="space-y-6">
       <div>
         <h1>Gán examiner theo đề</h1>
-        <p className="text-gray-600 mt-1">Manager phân công người chấm cho từng kỳ thi qua API /api/exams/{'{examId}'}/examiners</p>
       </div>
 
       <Card>
