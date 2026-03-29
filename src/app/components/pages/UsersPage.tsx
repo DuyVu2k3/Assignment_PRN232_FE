@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usersService, type UserListItem } from "../../api/services";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
@@ -82,6 +82,7 @@ export function UsersPage() {
       admin: users.filter((u) => u.role === "Admin").length,
       manager: users.filter((u) => u.role === "Manager").length,
       examiner: users.filter((u) => u.role === "Examiner").length,
+      moderator: users.filter((u) => u.role === "Moderator").length,
     };
   }, [users]);
 
@@ -131,7 +132,7 @@ export function UsersPage() {
     },
     {
       label: "Moderator",
-      value: mockUsers.filter((u) => u.role === "Moderator").length,
+      value: roleCounts.moderator,
       icon: UserCheck,
       color: "text-amber-600",
       bg: "bg-amber-50",
