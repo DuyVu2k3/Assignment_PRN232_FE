@@ -23,3 +23,14 @@ export const buildGradeEntriesUrl = (endpoint: GradeEntriesEndpointKey): string 
 
   return `${base.replace(/\/$/, '')}${path}`;
 };
+
+export const buildGradeEntriesBySubmissionUrl = (submissionEntryId: number): string => {
+  const base = GRADE_ENTRIES_API_CONFIG.baseUrl?.trim().replace(/\/$/, '') ?? '';
+  const path = `/grade-entries/submission/${submissionEntryId}`;
+
+  if (!base) {
+    return path;
+  }
+
+  return `${base}${path}`;
+};

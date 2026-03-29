@@ -26,6 +26,7 @@ import { ModeratorBatchTrackingPage } from "./components/pages/moderator/Moderat
 import { EntriesPage } from "./components/pages/moderator/EntriesPage";
 import { ViolationsPage } from "./components/pages/moderator/ViolationsPage";
 import { AssignedSubmissionsPage } from "./components/pages/examiner/AssignedSubmissionsPage";
+import { ExaminerEntryGradingPage } from "./components/pages/examiner/ExaminerEntryGradingPage";
 import { GradingHistoryPage } from "./components/pages/examiner/GradingHistoryPage";
 import { UnauthorizedPage } from "./components/pages/UnauthorizedPage";
 import { ForbiddenPage } from "./components/pages/ForbiddenPage";
@@ -88,6 +89,10 @@ export const router = createBrowserRouter([
       { path: "entries", element: withRoles(R.moderator, EntriesPage) },
       { path: "violations", element: withRoles(R.moderator, ViolationsPage) },
       { path: "assigned-submissions", element: withRoles(R.examiner, AssignedSubmissionsPage) },
+      {
+        path: "assigned-submissions/entries/:entryId/grade",
+        element: withRoles(R.examiner, ExaminerEntryGradingPage),
+      },
       { path: "grading-history", element: withRoles(R.examiner, GradingHistoryPage) },
       { path: "*", Component: NotFoundPage },
     ],

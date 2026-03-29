@@ -89,6 +89,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/examiners': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/submission-solutions': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 
