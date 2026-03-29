@@ -49,7 +49,7 @@ export const usersService = {
 
     const response = await fetch(url.toString(), {
       method: 'GET',
-      credentials: 'include',
+      credentials: 'omit',
       headers: {
         Accept: 'application/json, text/plain, */*',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
