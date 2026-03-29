@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate, Link, useLocation } from "react-router";
+import { HttpRequestError } from "../../api/http/requestJson";
+import { registerHttpNavigate } from "../../api/http/httpHandlers";
+import { consumePendingHttp401Redirect } from "../../api/http/httpAuthRedirect";
 import { useAuthStore } from "../../store/authStore";
 import {
   LayoutDashboard,
@@ -9,16 +12,41 @@ import {
   User,
   LogOut,
   GraduationCap,
+  Calendar,
+  ClipboardList,
+  UserPlus,
+  Boxes,
+  Activity,
+  BarChart3,
+  ShieldCheck,
+  UploadCloud,
+  ListOrdered,
+  AlertTriangle,
+  BookMarked,
+  History,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "Manager", "Examiner"] },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "Manager", "Examiner", "Moderator"] },
   { name: "Exams", href: "/exams", icon: FileText, roles: ["Admin", "Manager"] },
   { name: "Submissions", href: "/submissions", icon: Upload, roles: ["Admin", "Manager", "Examiner"] },
   { name: "Users", href: "/users", icon: Users, roles: ["Admin"] },
-  { name: "Profile", href: "/profile", icon: User, roles: ["Admin", "Manager", "Examiner"] },
+  { name: "Vai trò & quyền", href: "/roles", icon: ShieldCheck, roles: ["Admin"] },
+  { name: "Học kỳ", href: "/semesters", icon: Calendar, roles: ["Manager"] },
+  { name: "Rubric", href: "/rubrics", icon: ClipboardList, roles: ["Manager"] },
+  { name: "Gán examiner (đề)", href: "/assign-examiners/exam", icon: UserPlus, roles: ["Manager"] },
+  { name: "Gán examiner (batch)", href: "/assign-examiners/batch", icon: Boxes, roles: ["Manager"] },
+  { name: "Trạng thái batch", href: "/batches", icon: Activity, roles: ["Manager"] },
+  { name: "Báo cáo điểm", href: "/reports/scores", icon: BarChart3, roles: ["Manager"] },
+  { name: "Upload batch", href: "/upload-batch", icon: UploadCloud, roles: ["Moderator"] },
+  { name: "Theo dõi batch", href: "/moderator/batches", icon: Activity, roles: ["Moderator"] },
+  { name: "Entries", href: "/entries", icon: ListOrdered, roles: ["Moderator"] },
+  { name: "Vi phạm", href: "/violations", icon: AlertTriangle, roles: ["Moderator"] },
+  { name: "Chấm theo batch", href: "/assigned-submissions", icon: BookMarked, roles: ["Examiner"] },
+  { name: "Lịch sử chấm", href: "/grading-history", icon: History, roles: ["Examiner"] },
+  { name: "Profile", href: "/profile", icon: User, roles: ["Admin", "Manager", "Examiner", "Moderator"] },
 ];
 
 export function RootLayout() {
@@ -30,14 +58,28 @@ export function RootLayout() {
   const location = useLocation();
 
   useEffect(() => {
+    registerHttpNavigate((path) => navigate(path, { replace: true }));
+  }, [navigate]);
+
+  useEffect(() => {
     if (!user && token) {
-      fetchProfile().catch(() => {
+      fetchProfile().catch((err) => {
+        if (err instanceof HttpRequestError && err.status === 401) {
+          return;
+        }
+        if (err instanceof HttpRequestError && err.status === 403) {
+          navigate("/forbidden");
+          return;
+        }
         navigate("/login");
       });
       return;
     }
 
     if (!user && !token) {
+      if (consumePendingHttp401Redirect()) {
+        return;
+      }
       navigate("/login");
     }
   }, [user, token, fetchProfile, navigate]);

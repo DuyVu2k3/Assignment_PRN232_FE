@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { HttpRequestError } from '../api/http/requestJson';
 import { authService, AuthTokenResponse, AuthUser, UserRole } from '../api/services/authService';
 
 type User = AuthUser;
@@ -8,6 +9,9 @@ interface AuthState {
   user: User | null;
   token: string | null;
   refreshToken: string | null;
+  accessTokenExpiresAt: string | null;
+  refreshTokenExpiresAt: string | null;
+  tokenType: string | null;
   isLoadingProfile: boolean;
   register: (payload: { name: string; email: string; password: string; role: UserRole }) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -15,11 +19,22 @@ interface AuthState {
   updateProfile: (payload: { name: string; email: string }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Xóa session phía client, không gọi API (dùng khi 401 để tránh vòng lặp). */
+  clearLocalSession: () => void;
   isAuthenticated: boolean;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> => {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+};
+
+const getSessionMetaFromResponse = (payload: unknown) => {
+  const data = toRecord(payload);
+  return {
+    accessTokenExpiresAt: typeof data.accessTokenExpiresAt === 'string' ? data.accessTokenExpiresAt : null,
+    refreshTokenExpiresAt: typeof data.refreshTokenExpiresAt === 'string' ? data.refreshTokenExpiresAt : null,
+    tokenType: typeof data.tokenType === 'string' ? data.tokenType : null,
+  };
 };
 
 const getTokenFromResponse = (payload: unknown): string => {
@@ -60,7 +75,7 @@ const getRefreshTokenFromResponse = (payload: unknown): string => {
 
 const normalizeRole = (value: unknown): UserRole | null => {
   const role = String(value);
-  if (role === 'Admin' || role === 'Manager' || role === 'Examiner') {
+  if (role === 'Admin' || role === 'Manager' || role === 'Examiner' || role === 'Moderator') {
     return role;
   }
 
@@ -69,15 +84,24 @@ const normalizeRole = (value: unknown): UserRole | null => {
 
 const getUserFromResponse = (payload: unknown): AuthUser | null => {
   const data = toRecord(payload);
-  const rootAsUser = data;
   const nestedData = toRecord(data.data);
   const user = toRecord(data.user);
   const nestedUser = toRecord(nestedData.user);
+  const nestedDataIsUser =
+    nestedData.id !== undefined &&
+    nestedData.id !== null &&
+    typeof nestedData.email === 'string' &&
+    typeof nestedData.name === 'string' &&
+    nestedData.role !== undefined &&
+    nestedData.role !== null;
+
   const source = Object.keys(user).length > 0
     ? user
     : Object.keys(nestedUser).length > 0
       ? nestedUser
-      : rootAsUser;
+      : nestedDataIsUser
+        ? nestedData
+        : data;
 
   if (source.id === undefined || source.id === null || !source.email || !source.name || !source.role) {
     return null;
@@ -104,6 +128,9 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       refreshToken: null,
+      accessTokenExpiresAt: null,
+      refreshTokenExpiresAt: null,
+      tokenType: null,
       isLoadingProfile: false,
       isAuthenticated: false,
       register: async (payload) => {
@@ -111,28 +138,42 @@ export const useAuthStore = create<AuthState>()(
         const token = getTokenFromResponse(data);
         const refreshToken = getRefreshTokenFromResponse(data);
         const user = getUserFromResponse(data);
+        const sessionMeta = getSessionMetaFromResponse(data);
 
         if (!token) {
-          return;
+          throw new Error('Đăng ký thành công nhưng phản hồi không có access token');
         }
 
-        set({ token, refreshToken: refreshToken || null, user, isAuthenticated: true });
+        set({
+          token,
+          refreshToken: refreshToken || null,
+          user,
+          isAuthenticated: true,
+          ...sessionMeta,
+        });
 
         if (!user) {
           await get().fetchProfile();
         }
       },
       login: async (email: string, password: string) => {
-        const data = (await authService.login({ email, password })) as AuthTokenResponse | unknown;
+        const data = await authService.login({ email, password });
         const token = getTokenFromResponse(data);
         const refreshToken = getRefreshTokenFromResponse(data);
         const user = getUserFromResponse(data);
+        const sessionMeta = getSessionMetaFromResponse(data);
 
         if (!token) {
-          throw new Error('Dang nhap thanh cong nhung khong nhan duoc access token');
+          throw new Error('Đăng nhập thành công nhưng phản hồi không có access token');
         }
 
-        set({ token, refreshToken: refreshToken || null, user, isAuthenticated: true });
+        set({
+          token,
+          refreshToken: refreshToken || null,
+          user,
+          isAuthenticated: true,
+          ...sessionMeta,
+        });
 
         if (!user) {
           await get().fetchProfile();
@@ -142,23 +183,34 @@ export const useAuthStore = create<AuthState>()(
         const token = get().token;
 
         if (!token) {
-          set({ user: null, isAuthenticated: false });
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            accessTokenExpiresAt: null,
+            refreshTokenExpiresAt: null,
+            tokenType: null,
+            isAuthenticated: false,
+          });
           return;
         }
 
         set({ isLoadingProfile: true });
 
         try {
-          const payload = await authService.getMe(token ?? undefined);
+          const payload = await authService.getMe();
           const user = getUserFromResponse(payload);
 
           if (!user) {
-            throw new Error('Khong doc duoc thong tin user tu /api/auth/me');
+            throw new Error('Không đọc được thông tin user từ /api/auth/me');
           }
 
           set({ user, isAuthenticated: true });
         } catch (error) {
-          set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
+          if (error instanceof HttpRequestError && error.status === 403) {
+            throw error;
+          }
+          get().clearLocalSession();
           throw error;
         } finally {
           set({ isLoadingProfile: false });
@@ -189,19 +241,38 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       logout: async () => {
-        const token = get().token;
-
         try {
-          await authService.logout(token ?? undefined);
+          await authService.logout();
         } catch {
           // Clear client auth state even when the API logout request fails.
         }
 
-        set({ user: null, token: null, refreshToken: null, isAuthenticated: false, isLoadingProfile: false });
+        get().clearLocalSession();
+      },
+      clearLocalSession: () => {
+        set({
+          user: null,
+          token: null,
+          refreshToken: null,
+          accessTokenExpiresAt: null,
+          refreshTokenExpiresAt: null,
+          tokenType: null,
+          isAuthenticated: false,
+          isLoadingProfile: false,
+        });
       },
     }),
     {
       name: 'auth-storage',
+      partialize: (state) => ({
+        token: state.token,
+        refreshToken: state.refreshToken,
+        accessTokenExpiresAt: state.accessTokenExpiresAt,
+        refreshTokenExpiresAt: state.refreshTokenExpiresAt,
+        tokenType: state.tokenType,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

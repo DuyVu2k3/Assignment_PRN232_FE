@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { mockExams } from "../../data/mockData";
+import { formatExamPeriod, mockExams } from "../../data/mockData";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -10,11 +10,15 @@ import { Plus, Search, Clock, Users } from "lucide-react";
 export function ExamListPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredExams = mockExams.filter(
-    (exam) =>
-      exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exam.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredExams = mockExams.filter((exam) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      exam.title.toLowerCase().includes(q) ||
+      exam.subject.toLowerCase().includes(q) ||
+      (exam.courseCode?.toLowerCase().includes(q) ?? false) ||
+      formatExamPeriod(exam).toLowerCase().includes(q)
+    );
+  });
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -33,15 +37,16 @@ export function ExamListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1>Quản lý Đề thi</h1>
+          <h1>Quản lý kỳ thi (Exam)</h1>
           <p className="text-gray-600 mt-1">
-            Tạo và quản lý các đề thi trong hệ thống
+            Mỗi bản ghi là một <strong>kỳ thi</strong> (vd PRN232 PE · SU25 · Block 10w; FA25 ·
+            Giữa kỳ…) — không phải mã đề.
           </p>
         </div>
         <Link to="/exams/new">
           <Button>
             <Plus className="size-4 mr-2" />
-            Tạo đề thi mới
+            Tạo kỳ thi mới
           </Button>
         </Link>
       </div>
@@ -50,7 +55,7 @@ export function ExamListPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
           <Input
-            placeholder="Tìm kiếm đề thi..."
+            placeholder="Tìm môn, đợt SU25/FA25, Block, tên kỳ thi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -71,7 +76,12 @@ export function ExamListPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{exam.description}</p>
-                  <p className="text-sm text-gray-500">Môn: {exam.subject}</p>
+                  <p className="text-sm text-gray-500">
+                    Môn: {exam.courseCode ?? exam.subject}
+                  </p>
+                  <p className="text-xs font-medium text-gray-700 mt-1">
+                    Đợt kỳ thi: {formatExamPeriod(exam)}
+                  </p>
                 </div>
               </div>
 
@@ -82,7 +92,7 @@ export function ExamListPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="size-4 text-gray-400" />
-                  <span>{exam.assignedExaminers.length} giám khảo</span>
+                  <span>{exam.examinerUserIds.length} giám khảo (ExamExaminers)</span>
                 </div>
               </div>
 
@@ -103,7 +113,7 @@ export function ExamListPage() {
 
       {filteredExams.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">Không tìm thấy đề thi nào</p>
+          <p className="text-gray-500">Không tìm thấy kỳ thi nào</p>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router";
-import { mockExams, mockSubmissions } from "../../data/mockData";
+import { formatExamPeriod, mockExams, mockRubrics, mockSemesters, mockSubmissions } from "../../data/mockData";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -19,11 +19,13 @@ export function ExamDetailPage() {
   const { id } = useParams();
   const exam = mockExams.find((e) => e.id === id);
   const submissions = mockSubmissions.filter((s) => s.examId === id);
+  const semester = exam ? mockSemesters.find((s) => s.id === exam.semesterId) : undefined;
+  const rubricCount = exam ? mockRubrics.filter((r) => r.examId === exam.id).length : 0;
 
   if (!exam) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Không tìm thấy đề thi</p>
+        <p className="text-gray-500">Không tìm thấy kỳ thi</p>
         <Link to="/exams">
           <Button variant="outline" className="mt-4">
             Quay lại
@@ -32,6 +34,19 @@ export function ExamDetailPage() {
       </div>
     );
   }
+
+  const examStatusVariant = (s: string) => {
+    switch (s) {
+      case "Active":
+        return "success" as const;
+      case "Draft":
+        return "warning" as const;
+      case "Archived":
+        return "secondary" as const;
+      default:
+        return "default" as const;
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -56,7 +71,7 @@ export function ExamDetailPage() {
         </Link>
         <div className="flex-1">
           <h1>{exam.title}</h1>
-          <p className="text-gray-600 mt-1">Chi tiết đề thi và bài nộp</p>
+          <p className="text-gray-600 mt-1">Chi tiết kỳ thi & bài nộp (theo entry)</p>
         </div>
         <Button variant="outline">Chỉnh sửa</Button>
       </div>
@@ -64,12 +79,25 @@ export function ExamDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Thông tin đề thi</CardTitle>
+            <CardTitle>Thông tin kỳ thi</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Môn học</p>
+                <p className="text-sm text-gray-500 mb-1">Đợt kỳ thi</p>
+                <p className="font-medium">{formatExamPeriod(exam)}</p>
+                <p className="text-xs text-gray-500 mt-1">{semester?.name ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Mã môn</p>
+                <p className="font-medium">{exam.courseCode ?? exam.subject}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Rubric (tiêu chí)</p>
+                <p className="font-medium">{rubricCount} tiêu chí</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Môn (hiển thị)</p>
                 <p className="font-medium">{exam.subject}</p>
               </div>
               <div>
@@ -85,7 +113,7 @@ export function ExamDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Trạng thái</p>
-                <Badge variant="success">{exam.status}</Badge>
+                <Badge variant={examStatusVariant(exam.status)}>{exam.status}</Badge>
               </div>
             </div>
 

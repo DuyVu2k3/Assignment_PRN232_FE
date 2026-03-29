@@ -93,6 +93,8 @@ export function UsersPage() {
         return <Badge variant="default">Manager</Badge>;
       case "Examiner":
         return <Badge variant="secondary">Examiner</Badge>;
+      case "Moderator":
+        return <Badge variant="outline">Moderator</Badge>;
       default:
         return <Badge>{role}</Badge>;
     }
@@ -127,6 +129,13 @@ export function UsersPage() {
       color: "text-gray-600",
       bg: "bg-gray-50",
     },
+    {
+      label: "Moderator",
+      value: mockUsers.filter((u) => u.role === "Moderator").length,
+      icon: UserCheck,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+    },
   ];
 
   return (
@@ -151,7 +160,7 @@ export function UsersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardContent className="p-4">
@@ -193,7 +202,7 @@ export function UsersPage() {
                 <TableHead>Tên</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Vai trò</TableHead>
-                <TableHead>Trạng thái</TableHead>
+                <TableHead>Kỳ thi được phân công</TableHead>
                 <TableHead>Ngày tạo</TableHead>
               </TableRow>
             </TableHeader>
