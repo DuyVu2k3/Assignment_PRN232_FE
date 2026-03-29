@@ -34,6 +34,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/semesters': {
+        target: 'http://localhost:7002',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api/submissions': {
         target: 'http://localhost:7003',
         changeOrigin: true,

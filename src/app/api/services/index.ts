@@ -9,3 +9,4 @@ export {
   registerHttpClearSession,
 } from '../http';
 export * from './usersService';
+export * from './semestersService';
