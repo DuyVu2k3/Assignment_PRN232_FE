@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { mockSubmissionBatches } from "../../data/mockData";
 import { mockSubmissions } from "../../data/mockData";
@@ -22,24 +22,42 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Upload, Search, Download } from "lucide-react";
+import { submissionFilesService, examsService } from "../../api/services";
 import { format } from "date-fns";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "../ui/dialog";
 import { vi } from "date-fns/locale";
 
 export function SubmissionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // single upload only: archive input
+  const [archiveFileName, setArchiveFileName] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [exams, setExams] = useState<{ id: number; title: string }[]>([]);
+  const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
+  const [notes, setNotes] = useState<string>('');
+  
 
-  const filteredSubmissions = mockSubmissions.filter((submission) => {
-    const matchesSearch =
-      submission.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      submission.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      submission.examTitle.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || submission.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    let mounted = true;
+    examsService.getExams().then((list) => {
+      if (!mounted) return;
+      setExams(list.map((e) => ({ id: e.id, title: e.title })));
+      if (list.length > 0) setSelectedExamId(list[0].id);
+    }).catch(() => {
+      // ignore
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -77,6 +95,21 @@ export function SubmissionsPage() {
     },
   ];
 
+  const filteredSubmissions = mockSubmissions.filter((submission) => {
+    const matchesSearch =
+      submission.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      submission.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      submission.examTitle.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus =
+      statusFilter === "all" || submission.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  
+  // Page layout
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -98,10 +131,90 @@ export function SubmissionsPage() {
             </p>
           ) : null}
         </div>
-        <Button>
-          <Upload className="size-4 mr-2" />
-          Upload bài thi hàng loạt
-        </Button>
+
+        <div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Upload className="size-4 mr-2" />
+                Upload bài thi hàng loạt
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Tải lên bài thi hàng loạt</DialogTitle>
+                <DialogDescription>
+                  Vui lòng chọn kỳ thi, ghi chú (tuỳ chọn) và upload file .zip chứa bài nộp.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-1">Chọn kỳ thi</label>
+                  <select
+                    className="w-full border rounded px-2 py-1"
+                    value={selectedExamId ?? ''}
+                    onChange={(e) => setSelectedExamId(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <option value="">-- Chọn kỳ thi --</option>
+                    {exams.map((ex) => (
+                      <option key={ex.id} value={ex.id}>{ex.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-1">Ghi chú (Notes)</label>
+                  <input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full border rounded px-2 py-1" />
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-1">Archive (.zip)</label>
+                  <div className="flex items-center gap-2">
+                    <input ref={fileInputRef} type="file" accept=".zip,application/zip" className="hidden" onChange={(e) => {
+                      const f = e.currentTarget.files?.[0];
+                      setArchiveFileName(f ? f.name : null);
+                    }} />
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Chọn archive</Button>
+                    <span className="text-sm text-muted-foreground">{archiveFileName ?? 'Chưa có tệp nào'}</span>
+                  </div>
+                </div>
+
+                {/* single upload only - no grading file */}
+              </div>
+
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="ghost">Huỷ</Button>
+                </DialogClose>
+
+                <Button
+                  onClick={async () => {
+                    const file = fileInputRef.current?.files?.[0];
+                    if (!file) {
+                      alert('Vui lòng chọn file .zip');
+                      return;
+                    }
+                    if (!selectedExamId) {
+                      alert('Vui lòng chọn kỳ thi (Exam)');
+                      return;
+                    }
+
+                    try {
+                      await submissionFilesService.upload(file, selectedExamId, notes);
+                      alert('Tải lên thành công');
+                    } catch (err: any) {
+                      alert(err?.message ?? 'Upload thất bại');
+                    }
+                  }}
+                >
+                  Upload
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-4">

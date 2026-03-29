@@ -12,3 +12,6 @@ export * from './usersService';
 export * from './semestersService';
 export * from './examsService';
 export * from './rubricsService';
+export * from './examExaminersService';
+export * from './submissionFilesService';
+export * from './assignedExaminerService';
