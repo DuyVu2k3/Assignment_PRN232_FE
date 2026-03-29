@@ -21,7 +21,6 @@ import { AssignExaminerByExamPage } from "./components/pages/AssignExaminerByExa
 import { AssignExaminerByBatchPage } from "./components/pages/AssignExaminerByBatchPage";
 import { BatchesStatusPage } from "./components/pages/BatchesStatusPage";
 import { ScoreReportsPage } from "./components/pages/ScoreReportsPage";
-import { RolesPermissionsPage } from "./components/pages/RolesPermissionsPage";
 import { UploadBatchPage } from "./components/pages/UploadBatchPage";
 import { ModeratorBatchTrackingPage } from "./components/pages/ModeratorBatchTrackingPage";
 import { EntriesPage } from "./components/pages/EntriesPage";
@@ -78,7 +77,6 @@ export const router = createBrowserRouter([
       { path: "batches/:batchId/grade", element: withRoles(R.submissions, BatchGradingPage) },
       { path: "users", element: withRoles(R.admin, UsersPage) },
       { path: "profile", Component: ProfilePage },
-      { path: "roles", element: withRoles(R.admin, RolesPermissionsPage) },
       { path: "semesters", element: withRoles(R.manager, SemestersPage) },
       { path: "rubrics", element: withRoles(R.manager, RubricsPage) },
       { path: "assign-examiners/exam", element: withRoles(R.manager, AssignExaminerByExamPage) },
