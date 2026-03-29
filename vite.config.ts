@@ -39,6 +39,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/rubrics': {
+        target: 'http://localhost:7002',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api/submissions': {
         target: 'http://localhost:7003',
         changeOrigin: true,

@@ -10,3 +10,5 @@ export {
 } from '../http';
 export * from './usersService';
 export * from './semestersService';
+export * from './examsService';
+export * from './rubricsService';

@@ -1,61 +1,96 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { formatExamPeriod, mockExams } from "../../data/mockData";
+import { examsService, type Exam } from "../../api/services";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
-import { Plus, Search, Clock, Users } from "lucide-react";
+import { Plus, Search, Calendar, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+
+const formatDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString("vi-VN");
+};
 
 export function ExamListPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const filteredExams = mockExams.filter((exam) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      exam.title.toLowerCase().includes(q) ||
-      exam.subject.toLowerCase().includes(q) ||
-      (exam.courseCode?.toLowerCase().includes(q) ?? false) ||
-      formatExamPeriod(exam).toLowerCase().includes(q)
-    );
-  });
+  const loadExams = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "success";
-      case "Draft":
-        return "warning";
-      case "Archived":
-        return "secondary";
-      default:
-        return "default";
+    try {
+      const data = await examsService.getExams();
+      setExams(Array.isArray(data) ? data : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không tải được danh sách kỳ thi";
+      setErrorMessage(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadExams();
+  }, []);
+
+  const filteredExams = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return exams;
+    }
+
+    return exams.filter((exam) => {
+      return (
+        exam.title.toLowerCase().includes(q) ||
+        (exam.semesterName?.toLowerCase().includes(q) ?? false) ||
+        String(exam.id).includes(q)
+      );
+    });
+  }, [exams, searchQuery]);
+
+  const sortedExams = useMemo(() => {
+    return [...filteredExams].sort((a, b) => {
+      const da = new Date(a.createdAt ?? a.dueDate).getTime();
+      const db = new Date(b.createdAt ?? b.dueDate).getTime();
+      return db - da;
+    });
+  }, [filteredExams]);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1>Quản lý kỳ thi (Exam)</h1>
-          <p className="text-gray-600 mt-1">
-            Mỗi bản ghi là một <strong>kỳ thi</strong> (vd PRN232 PE · SU25 · Block 10w; FA25 ·
-            Giữa kỳ…) — không phải mã đề.
-          </p>
+          <p className="text-gray-600 mt-1">Manager xem danh sách kỳ thi từ API GET /api/exams</p>
         </div>
-        <Link to="/exams/new">
-          <Button>
-            <Plus className="size-4 mr-2" />
-            Tạo kỳ thi mới
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={loadExams} disabled={isLoading}>
+            <RefreshCw className="size-4 mr-2" />
+            {isLoading ? "Đang tải..." : "Tải lại"}
           </Button>
-        </Link>
+          <Link to="/exams/new">
+            <Button>
+              <Plus className="size-4 mr-2" />
+              Tạo kỳ thi mới
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
           <Input
-            placeholder="Tìm môn, đợt SU25/FA25, Block, tên kỳ thi..."
+            placeholder="Tìm theo tên kỳ thi, học kỳ hoặc ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -63,36 +98,25 @@ export function ExamListPage() {
         </div>
       </div>
 
+      {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredExams.map((exam) => (
+        {sortedExams.map((exam) => (
           <Card key={exam.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold">{exam.title}</h3>
-                    <Badge variant={getStatusVariant(exam.status)}>
-                      {exam.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{exam.description}</p>
-                  <p className="text-sm text-gray-500">
-                    Môn: {exam.courseCode ?? exam.subject}
-                  </p>
-                  <p className="text-xs font-medium text-gray-700 mt-1">
-                    Đợt kỳ thi: {formatExamPeriod(exam)}
-                  </p>
-                </div>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold">{exam.title}</h3>
+                <p className="text-sm text-gray-600 mt-1">Học kỳ: {exam.semesterName ?? `ID ${exam.semesterId}`}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="size-4 text-gray-400" />
-                  <span>{exam.duration} phút</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg text-sm">
+                <div className="flex items-center gap-2">
+                  <Calendar className="size-4 text-gray-400" />
+                  <span>Hạn nộp: {formatDateTime(exam.dueDate)}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Users className="size-4 text-gray-400" />
-                  <span>{exam.examinerUserIds.length} giám khảo (ExamExaminers)</span>
+                <div>
+                  <span className="text-gray-600">Tổng điểm tối đa: </span>
+                  <span className="font-medium">{exam.totalMaxScore ?? "-"}</span>
                 </div>
               </div>
 
@@ -102,20 +126,17 @@ export function ExamListPage() {
                     Xem chi tiết
                   </Button>
                 </Link>
-                <Button variant="secondary">
-                  Phân công
-                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {filteredExams.length === 0 && (
+      {sortedExams.length === 0 && !isLoading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Không tìm thấy kỳ thi nào</p>
+          <p className="text-gray-500">Chưa có kỳ thi nào</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

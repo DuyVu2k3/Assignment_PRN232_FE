@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
+import { examsService, semestersService, type Semester } from "../../api/services";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
 import {
   Select,
   SelectContent,
@@ -13,28 +13,64 @@ import {
 } from "../ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { ArrowLeft } from "lucide-react";
-
-/** Demo tập trung PRN232. */
-const subjects = ["PRN232"];
+import { toast } from "sonner";
 
 export function CreateExamPage() {
   const navigate = useNavigate();
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [isLoadingSemesters, setIsLoadingSemesters] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
-    subject: "",
-    description: "",
-    totalPoints: "100",
-    duration: "90",
+    dueDate: "",
+    semesterId: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const loadSemesters = async () => {
+      setIsLoadingSemesters(true);
+      try {
+        const data = await semestersService.getSemesters();
+        setSemesters(Array.isArray(data) ? data : []);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không tải được danh sách học kỳ");
+      } finally {
+        setIsLoadingSemesters(false);
+      }
+    };
+
+    loadSemesters();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In production, this would call the CreateExam API
-    console.log("Creating exam:", formData);
-    // Simulate API call
-    setTimeout(() => {
+
+    if (!formData.title || !formData.dueDate || !formData.semesterId) {
+      toast.error("Vui lòng nhập đầy đủ thông tin kỳ thi");
+      return;
+    }
+
+    const semesterId = Number(formData.semesterId);
+    if (!Number.isInteger(semesterId) || semesterId <= 0) {
+      toast.error("Học kỳ không hợp lệ");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await examsService.createExam({
+        title: formData.title.trim(),
+        dueDate: new Date(formData.dueDate).toISOString(),
+        semesterId,
+      });
+
+      toast.success("Tạo kỳ thi thành công");
       navigate("/exams");
-    }, 500);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Tạo kỳ thi thất bại");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -47,9 +83,7 @@ export function CreateExamPage() {
         </Link>
         <div>
           <h1>Tạo kỳ thi mới (Exam)</h1>
-          <p className="text-gray-600 mt-1">
-            Kỳ thi = đợt thi (vd PRN232 PE · SU25 · Block 10w), không phải mã đề.
-          </p>
+          <p className="text-gray-600 mt-1">Manager tạo kỳ thi từ API POST /api/exams</p>
         </div>
       </div>
 
@@ -65,7 +99,7 @@ export function CreateExamPage() {
               </Label>
               <Input
                 id="title"
-                placeholder="VD: PE PRN232 — SU25 · Block 10w"
+                placeholder="VD: PE PRN232 - SU26"
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -75,23 +109,22 @@ export function CreateExamPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="subject">
-                Môn học <span className="text-red-500">*</span>
+              <Label htmlFor="semesterId">
+                Học kỳ <span className="text-red-500">*</span>
               </Label>
               <Select
-                value={formData.subject}
+                value={formData.semesterId}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, subject: value })
+                  setFormData({ ...formData, semesterId: value })
                 }
-                required
               >
-                <SelectTrigger id="subject">
-                  <SelectValue placeholder="Chọn môn học" />
+                <SelectTrigger id="semesterId" disabled={isLoadingSemesters}>
+                  <SelectValue placeholder={isLoadingSemesters ? "Đang tải học kỳ..." : "Chọn học kỳ"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
+                  {semesters.map((semester) => (
+                    <SelectItem key={semester.id} value={String(semester.id)}>
+                      {semester.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -99,54 +132,24 @@ export function CreateExamPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Mô tả</Label>
-              <Textarea
-                id="description"
-                placeholder="Mô tả đợt kỳ thi, block, lớp giảng viên…"
-                rows={4}
-                value={formData.description}
+              <Label htmlFor="dueDate">
+                Hạn nộp <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="dueDate"
+                type="datetime-local"
+                value={formData.dueDate}
                 onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                  setFormData({ ...formData, dueDate: e.target.value })
                 }
+                required
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalPoints">
-                  Tổng điểm <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="totalPoints"
-                  type="number"
-                  min="0"
-                  value={formData.totalPoints}
-                  onChange={(e) =>
-                    setFormData({ ...formData, totalPoints: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="duration">
-                  Thời gian (phút) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  min="1"
-                  value={formData.duration}
-                  onChange={(e) =>
-                    setFormData({ ...formData, duration: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            </div>
-
             <div className="flex items-center gap-3 pt-4 border-t">
-              <Button type="submit">Tạo kỳ thi</Button>
+              <Button type="submit" disabled={isSubmitting || isLoadingSemesters}>
+                {isSubmitting ? "Đang tạo..." : "Tạo kỳ thi"}
+              </Button>
               <Link to="/exams">
                 <Button type="button" variant="outline">
                   Hủy
