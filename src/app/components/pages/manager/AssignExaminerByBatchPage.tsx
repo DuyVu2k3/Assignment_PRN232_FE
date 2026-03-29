@@ -1,4 +1,4 @@
-import { PlaceholderShell } from "./PlaceholderShell";
+import { PlaceholderShell } from "../PlaceholderShell";
 
 export function AssignExaminerByBatchPage() {
   return (

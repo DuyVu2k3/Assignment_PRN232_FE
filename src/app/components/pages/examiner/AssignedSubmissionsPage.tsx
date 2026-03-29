@@ -6,10 +6,10 @@ import {
   getSubmissionFileById,
   getRubricsForExam,
   mockExams,
-} from "../../data/mockData";
-import { useAuthStore } from "../../store/authStore";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+} from "../../../data/mockData";
+import { useAuthStore } from "../../../store/authStore";
+import { Button } from "../../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { ClipboardList, Table2 } from "lucide-react";
 
 export function AssignedSubmissionsPage() {
@@ -30,12 +30,11 @@ export function AssignedSubmissionsPage() {
       <div>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Table2 className="size-7 text-muted-foreground" />
-          Chấm bài theo batch
+          Danh sách bài được phân — chấm (rubric)
         </h1>
         <p className="text-gray-600 mt-1 text-sm">
-          Chọn một batch được phân công. Bảng chấm gồm cột <strong>Mã sinh viên (StudentCode)</strong> và các
-          cột tiêu chí do <strong>Manager</strong> cấu hình (rubric). Nhập điểm như Excel (Tab / Shift+Tab),
-          rồi bấm <strong>Lưu điểm</strong>.
+          Bước 1: chọn batch. Bước 2: bảng điểm có cột <strong>StudentCode</strong> và các tiêu chí do{" "}
+          <strong>Manager</strong> cấu hình. Nhập điểm như Excel (Tab), rồi <strong>Lưu điểm</strong>.
         </p>
       </div>
 

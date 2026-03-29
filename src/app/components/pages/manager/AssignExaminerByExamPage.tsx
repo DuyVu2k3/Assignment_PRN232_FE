@@ -6,17 +6,18 @@ import {
   type Exam,
   type ExamExaminerAssignment,
   type UserListItem,
-} from "../../api/services";
-import { useAuthStore } from "../../store/authStore";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
+} from "../../../api/services";
+import { UserRole } from "../../../types/enums";
+import { useAuthStore } from "../../../store/authStore";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Button } from "../../ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "../../ui/select";
 import {
   Table,
   TableBody,
@@ -24,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { Plus, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -73,7 +74,7 @@ export function AssignExaminerByExamPage() {
 
       const examList = Array.isArray(examsResult) ? examsResult : [];
       setExams(examList);
-      setExaminers((usersResult.data ?? []).filter((item) => item.role === "Examiner"));
+      setExaminers((usersResult.data ?? []).filter((item) => item.role === UserRole.Examiner));
 
       if (!selectedExamId && examList.length > 0) {
         setSelectedExamId(String(examList[0].id));
@@ -172,7 +173,6 @@ export function AssignExaminerByExamPage() {
     <div className="space-y-6">
       <div>
         <h1>Gán examiner theo đề</h1>
-        <p className="text-gray-600 mt-1">Manager phân công người chấm cho từng kỳ thi qua API /api/exams/{'{examId}'}/examiners</p>
       </div>
 
       <Card>

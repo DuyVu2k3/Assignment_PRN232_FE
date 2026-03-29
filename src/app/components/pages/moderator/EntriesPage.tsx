@@ -6,10 +6,10 @@ import {
   mockSubmissionFiles,
   countAssetsForEntry,
   countViolationsForEntry,
-} from "../../data/mockData";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
+} from "../../../data/mockData";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "../../ui/table";
 import { ListOrdered } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";

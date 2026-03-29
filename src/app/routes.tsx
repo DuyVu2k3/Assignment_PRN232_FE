@@ -1,43 +1,42 @@
 import { type ComponentType } from "react";
 import { createBrowserRouter } from "react-router";
-import type { UserRole } from "./api/services/authService";
+import { UserRole } from "./types/enums";
 import { RequireRoles } from "./components/auth/RequireRoles";
 import { RootLayout } from "./components/layouts/RootLayout";
 import { LoginPage } from "./components/pages/LoginPage";
 import { DashboardPage } from "./components/pages/DashboardPage";
-import { ExamListPage } from "./components/pages/ExamListPage";
-import { ExamDetailPage } from "./components/pages/ExamDetailPage";
-import { CreateExamPage } from "./components/pages/CreateExamPage";
+import { ExamListPage } from "./components/pages/manager/ExamListPage";
+import { ExamDetailPage } from "./components/pages/manager/ExamDetailPage";
+import { CreateExamPage } from "./components/pages/manager/CreateExamPage";
 import { SubmissionsPage } from "./components/pages/SubmissionsPage";
 import { GradingPage } from "./components/pages/GradingPage";
 import { BatchGradingPage } from "./components/pages/BatchGradingPage";
-import { UsersPage } from "./components/pages/UsersPage";
+import { UsersPage } from "./components/pages/admin/UsersPage";
 import { NotFoundPage } from "./components/pages/NotFoundPage";
 import { ProfilePage } from "./components/pages/ProfilePage";
 import { RegisterPage } from "./components/pages/RegisterPage";
-import { SemestersPage } from "./components/pages/SemestersPage";
-import { RubricsPage } from "./components/pages/RubricsPage";
-import { AssignExaminerByExamPage } from "./components/pages/AssignExaminerByExamPage";
-import { AssignExaminerByBatchPage } from "./components/pages/AssignExaminerByBatchPage";
-import { BatchesStatusPage } from "./components/pages/BatchesStatusPage";
-import { ScoreReportsPage } from "./components/pages/ScoreReportsPage";
-import { RolesPermissionsPage } from "./components/pages/RolesPermissionsPage";
-import { UploadBatchPage } from "./components/pages/UploadBatchPage";
-import { ModeratorBatchTrackingPage } from "./components/pages/ModeratorBatchTrackingPage";
-import { EntriesPage } from "./components/pages/EntriesPage";
-import { ViolationsPage } from "./components/pages/ViolationsPage";
-import { AssignedSubmissionsPage } from "./components/pages/AssignedSubmissionsPage";
-import { GradingHistoryPage } from "./components/pages/GradingHistoryPage";
+import { SemestersPage } from "./components/pages/manager/SemestersPage";
+import { RubricsPage } from "./components/pages/manager/RubricsPage";
+import { AssignExaminerByExamPage } from "./components/pages/manager/AssignExaminerByExamPage";
+import { AssignExaminerByBatchPage } from "./components/pages/manager/AssignExaminerByBatchPage";
+import { BatchesStatusPage } from "./components/pages/manager/BatchesStatusPage";
+import { ScoreReportsPage } from "./components/pages/manager/ScoreReportsPage";
+import { UploadBatchPage } from "./components/pages/moderator/UploadBatchPage";
+import { ModeratorBatchTrackingPage } from "./components/pages/moderator/ModeratorBatchTrackingPage";
+import { EntriesPage } from "./components/pages/moderator/EntriesPage";
+import { ViolationsPage } from "./components/pages/moderator/ViolationsPage";
+import { AssignedSubmissionsPage } from "./components/pages/examiner/AssignedSubmissionsPage";
+import { GradingHistoryPage } from "./components/pages/examiner/GradingHistoryPage";
 import { UnauthorizedPage } from "./components/pages/UnauthorizedPage";
 import { ForbiddenPage } from "./components/pages/ForbiddenPage";
 
 const R = {
-  admin: ["Admin"] as const satisfies readonly UserRole[],
-  manager: ["Manager"] as const satisfies readonly UserRole[],
-  moderator: ["Moderator"] as const satisfies readonly UserRole[],
-  examiner: ["Examiner"] as const satisfies readonly UserRole[],
-  exams: ["Admin", "Manager"] as const satisfies readonly UserRole[],
-  submissions: ["Admin", "Manager", "Examiner"] as const satisfies readonly UserRole[],
+  admin: [UserRole.Admin] as const satisfies readonly UserRole[],
+  manager: [UserRole.Manager] as const satisfies readonly UserRole[],
+  moderator: [UserRole.Moderator] as const satisfies readonly UserRole[],
+  examiner: [UserRole.Examiner] as const satisfies readonly UserRole[],
+  exams: [UserRole.Admin, UserRole.Manager] as const satisfies readonly UserRole[],
+  submissions: [UserRole.Admin, UserRole.Manager, UserRole.Examiner] as const satisfies readonly UserRole[],
 };
 
 function withRoles(roles: readonly UserRole[], Page: ComponentType) {
@@ -78,7 +77,6 @@ export const router = createBrowserRouter([
       { path: "batches/:batchId/grade", element: withRoles(R.submissions, BatchGradingPage) },
       { path: "users", element: withRoles(R.admin, UsersPage) },
       { path: "profile", Component: ProfilePage },
-      { path: "roles", element: withRoles(R.admin, RolesPermissionsPage) },
       { path: "semesters", element: withRoles(R.manager, SemestersPage) },
       { path: "rubrics", element: withRoles(R.manager, RubricsPage) },
       { path: "assign-examiners/exam", element: withRoles(R.manager, AssignExaminerByExamPage) },

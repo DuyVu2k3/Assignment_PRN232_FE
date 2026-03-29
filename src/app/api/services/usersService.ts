@@ -1,10 +1,13 @@
 import { buildUsersUrl } from '../config/usersApiConfig';
+import { requestJson, resolveApiUrl } from '../http/requestJson';
+import type { AuthUser } from './authService';
+import type { UserRole } from '../../types/enums';
 
 export interface UserListItem {
   id: number;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Examiner' | string;
+  role: UserRole | string;
   isActive: boolean;
   createdAt: string;
 }
@@ -23,6 +26,11 @@ export interface GetUsersParams {
   pageNumber: number;
   pageSize: number;
   token?: string;
+}
+
+/** API có thể trả isActive boolean hoặc 0/1. */
+export function normalizeUserIsActive(value: unknown): boolean {
+  return value === true || value === 1 || value === '1';
 }
 
 const parseJsonLike = async <T>(response: Response): Promise<T> => {
@@ -60,6 +68,19 @@ export const usersService = {
       throw new Error(`Request failed with status ${response.status}`);
     }
 
-    return parseJsonLike<PagedResponse<UserListItem>>(response);
+    const raw = await parseJsonLike<PagedResponse<UserListItem>>(response);
+    const data = (raw.data ?? []).map((u) => ({
+      ...u,
+      isActive: normalizeUserIsActive(u.isActive),
+    }));
+    return { ...raw, data };
   },
+
+  /** PATCH /api/users/{id}/status — body `{ "isActive": true }`. */
+  updateUserStatus: (userId: number, isActive: boolean) =>
+    requestJson<AuthUser>({
+      url: resolveApiUrl(`/api/users/${userId}/status`),
+      method: 'PATCH',
+      body: { isActive },
+    }),
 };

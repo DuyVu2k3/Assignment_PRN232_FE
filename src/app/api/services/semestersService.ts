@@ -28,6 +28,32 @@ const parseMaybeJson = <T>(value: unknown): T => {
   return value as T;
 };
 
+/** GET /api/semesters — backend có thể trả mảng hoặc { data: [...] }. */
+const normalizeSemestersList = (raw: unknown): Semester[] => {
+  const parsed = parseMaybeJson<unknown>(raw);
+  if (Array.isArray(parsed)) {
+    return parsed as Semester[];
+  }
+  if (parsed && typeof parsed === 'object' && 'data' in parsed) {
+    const data = (parsed as { data: unknown }).data;
+    if (Array.isArray(data)) {
+      return data as Semester[];
+    }
+  }
+  return [];
+};
+
+const normalizeSemester = (raw: unknown): Semester => {
+  const parsed = parseMaybeJson<unknown>(raw);
+  if (parsed && typeof parsed === 'object' && 'data' in parsed) {
+    const inner = (parsed as { data: unknown }).data;
+    if (inner && typeof inner === 'object') {
+      return inner as Semester;
+    }
+  }
+  return parsed as Semester;
+};
+
 export const semestersService = {
   getSemesters: async (): Promise<Semester[]> => {
     const raw = await requestJson<unknown>({
@@ -35,7 +61,7 @@ export const semestersService = {
       method: 'GET',
     });
 
-    return parseMaybeJson<Semester[]>(raw);
+    return normalizeSemestersList(raw);
   },
 
   createSemester: async (payload: CreateSemesterPayload): Promise<Semester> => {
@@ -45,7 +71,7 @@ export const semestersService = {
       body: payload,
     });
 
-    return parseMaybeJson<Semester>(raw);
+    return normalizeSemester(raw);
   },
 
   getSemesterById: async (id: number): Promise<Semester> => {
@@ -54,7 +80,7 @@ export const semestersService = {
       method: 'GET',
     });
 
-    return parseMaybeJson<Semester>(raw);
+    return normalizeSemester(raw);
   },
 
   updateSemester: async (id: number, payload: UpdateSemesterPayload): Promise<Semester> => {
@@ -64,7 +90,7 @@ export const semestersService = {
       body: payload,
     });
 
-    return parseMaybeJson<Semester>(raw);
+    return normalizeSemester(raw);
   },
 
   deleteSemester: async (id: number): Promise<void> => {

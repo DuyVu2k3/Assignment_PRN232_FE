@@ -1,3 +1,22 @@
+/** Enum domain — import từ đây hoặc `./enums`. */
+export {
+  UserRole,
+  ExamStatus,
+  SubmissionBatchStatus,
+  SubmissionEntryStatus,
+  SubmissionAssetKind,
+  ViolationSeverity,
+} from './enums';
+
+import type {
+  ExamStatus,
+  SubmissionAssetKind,
+  SubmissionBatchStatus,
+  SubmissionEntryStatus,
+  UserRole,
+  ViolationSeverity,
+} from './enums';
+
 /** --- Exam Service --- */
 
 /** Kỳ học / mã kỳ (vd SU25, FA25) — gắn với kỳ thi, khác mã đề. */
@@ -32,7 +51,7 @@ export interface Exam {
   totalPoints: number;
   duration: number;
   createdAt: string;
-  status: 'Draft' | 'Active' | 'Archived';
+  status: ExamStatus;
   createdBy: string;
   /** UserId examiner — khớp bảng ExamExaminers (many-to-many Exam ↔ User). */
   examinerUserIds: string[];
@@ -55,12 +74,6 @@ export interface ExamExaminer {
 
 /** --- Submission Service --- */
 
-export type SubmissionBatchStatus =
-  | 'PendingExtraction'
-  | 'Extracting'
-  | 'Ready'
-  | 'Failed';
-
 export interface SubmissionFile {
   id: string;
   originalFileName: string;
@@ -78,8 +91,6 @@ export interface SubmissionBatch {
   createdAt: string;
 }
 
-export type SubmissionEntryLifecycleStatus = 'Pending' | 'Grading' | 'Graded';
-
 export interface SubmissionEntry {
   id: string;
   submissionBatchId: string;
@@ -87,7 +98,7 @@ export interface SubmissionEntry {
   studentCode: string;
   studentName: string;
   /** Trạng thái nghiệp vụ sau giải nén / trước-khi chấm. */
-  status: SubmissionEntryLifecycleStatus;
+  status: SubmissionEntryStatus;
   createdAt: string;
 }
 
@@ -95,7 +106,7 @@ export interface SubmissionAsset {
   id: string;
   submissionEntryId: string;
   fileName: string;
-  kind: 'image' | 'code' | 'document' | 'other';
+  kind: SubmissionAssetKind;
   relativePath: string;
 }
 
@@ -104,7 +115,7 @@ export interface SubmissionViolation {
   submissionEntryId: string;
   submissionAssetId: string | null;
   message: string;
-  severity: 'info' | 'warning' | 'error';
+  severity: ViolationSeverity;
 }
 
 /**
@@ -169,7 +180,7 @@ export interface Submission {
   studentId: string;
   studentName: string;
   submittedAt: string;
-  status: 'Pending' | 'Grading' | 'Graded';
+  status: SubmissionEntryStatus;
   /** Tổng điểm (từ rubric hoặc GradeEntry). */
   score?: number;
   gradedBy?: string;
@@ -181,7 +192,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Examiner' | 'Moderator';
+  role: UserRole;
   assignedExams: number;
   createdAt: string;
 }

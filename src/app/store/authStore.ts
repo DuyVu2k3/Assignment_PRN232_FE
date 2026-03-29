@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { HttpRequestError } from '../api/http/requestJson';
-import { authService, AuthTokenResponse, AuthUser, UserRole } from '../api/services/authService';
+import { authService, AuthTokenResponse, AuthUser } from '../api/services/authService';
+import { UserRole } from '../types/enums';
 
 type User = AuthUser;
 
@@ -73,13 +74,11 @@ const getRefreshTokenFromResponse = (payload: unknown): string => {
   return (found as string) ?? '';
 };
 
+const ROLE_SET = new Set<string>(Object.values(UserRole));
+
 const normalizeRole = (value: unknown): UserRole | null => {
   const role = String(value);
-  if (role === 'Admin' || role === 'Manager' || role === 'Examiner' || role === 'Moderator') {
-    return role;
-  }
-
-  return null;
+  return ROLE_SET.has(role) ? (role as UserRole) : null;
 };
 
 const getUserFromResponse = (payload: unknown): AuthUser | null => {
