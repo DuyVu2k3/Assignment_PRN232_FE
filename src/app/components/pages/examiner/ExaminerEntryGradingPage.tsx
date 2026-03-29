@@ -9,7 +9,10 @@ import {
   type ExaminerEntryDto,
   type ExaminerMeBatchGroup,
   type Rubric,
+  type SubmissionSolutionFilesResponse,
 } from "../../../api/services";
+import { SolutionFilesExplorer } from "../../examiner/SolutionFilesExplorer";
+import { buildSolutionZipBlob } from "../../../lib/solutionZipDownload";
 import { useAuthStore } from "../../../store/authStore";
 import { SubmissionBatchPipelineStatus } from "../../../types/enums";
 import { cn } from "../../../lib/utils";
@@ -26,7 +29,7 @@ import {
   TableRow,
 } from "../../ui/table";
 import { Textarea } from "../../ui/textarea";
-import { ArrowLeft, Download, FileStack, Loader2, Save } from "lucide-react";
+import { ArrowLeft, FileStack, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 const formatDateTime = (value: string | null | undefined) => {
@@ -69,7 +72,7 @@ export function ExaminerEntryGradingPage() {
   const [entry, setEntry] = useState<ExaminerEntryDto | null>(null);
 
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
-  const [files, setFiles] = useState<string[]>([]);
+  const [solutionBundle, setSolutionBundle] = useState<SubmissionSolutionFilesResponse | null>(null);
   const [historyPage] = useState({ pageNumber: 1, pageSize: 10 });
   const [history, setHistory] = useState<Awaited<
     ReturnType<typeof gradeEntriesService.getGradeEntriesBySubmissionEntry>
@@ -144,7 +147,7 @@ export function ExaminerEntryGradingPage() {
   useEffect(() => {
     if (!entry || !Number.isFinite(examId)) {
       setRubrics([]);
-      setFiles([]);
+      setSolutionBundle(null);
       setHistory(null);
       return;
     }
@@ -154,9 +157,9 @@ export function ExaminerEntryGradingPage() {
 
     void (async () => {
       try {
-        const [rList, fList, h] = await Promise.all([
+        const [rList, solutionRes, h] = await Promise.all([
           rubricsService.getRubricsByExamId(examId!),
-          submissionSolutionsService.listFiles(entry.id),
+          submissionSolutionsService.getSolutionFiles(entry.id),
           gradeEntriesService.getGradeEntriesBySubmissionEntry(
             entry.id,
             historyPage.pageNumber,
@@ -165,13 +168,13 @@ export function ExaminerEntryGradingPage() {
         ]);
         if (cancelled) return;
         setRubrics(Array.isArray(rList) ? rList : []);
-        setFiles(fList);
+        setSolutionBundle(solutionRes);
         setHistory(h);
       } catch (err) {
         const msg = err instanceof HttpRequestError ? err.message : "Không tải chi tiết bài / rubric.";
         toast.error(msg);
         setRubrics([]);
-        setFiles([]);
+        setSolutionBundle(null);
         setHistory(null);
       } finally {
         if (!cancelled) setLoadingDetail(false);
@@ -183,18 +186,22 @@ export function ExaminerEntryGradingPage() {
     };
   }, [entry, examId, historyPage.pageNumber, historyPage.pageSize]);
 
-  const onDownload = useCallback(
+  const triggerBlobDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onDownloadSolutionFile = useCallback(
     async (filePath: string) => {
       if (!entry) return;
       try {
         const blob = await submissionSolutionsService.downloadFile(entry.id, filePath);
         const name = filePath.split(/[/\\]/).pop() || "download.bin";
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        a.click();
-        URL.revokeObjectURL(url);
+        triggerBlobDownload(blob, name);
         toast.success("Đã tải file.");
       } catch (err) {
         const msg = err instanceof HttpRequestError ? err.message : "Tải file thất bại.";
@@ -203,6 +210,50 @@ export function ExaminerEntryGradingPage() {
     },
     [entry]
   );
+
+  const onDownloadAttachment = useCallback(
+    async (assetId: number, fileName: string) => {
+      if (!entry) return;
+      try {
+        const blob = await submissionSolutionsService.downloadAttachment(entry.id, assetId);
+        triggerBlobDownload(blob, fileName || `attachment-${assetId}`);
+        toast.success("Đã tải file đính kèm.");
+      } catch (err) {
+        const msg = err instanceof HttpRequestError ? err.message : "Tải đính kèm thất bại.";
+        toast.error(msg);
+      }
+    },
+    [entry]
+  );
+
+  const onDownloadAllSolutionFiles = useCallback(async () => {
+    if (!entry || !solutionBundle) return;
+    const paths = solutionBundle.solutionFiles.filter((f) => !f.isDirectory).map((f) => f.path);
+    if (paths.length === 0) {
+      toast.info("Không có file để tải.");
+      return;
+    }
+
+    const rootFolder = `solution_${entry.studentCode}_${entry.id}`;
+    const zipName = `${entry.studentCode}_entry${entry.id}_solution.zip`;
+
+    await toast.promise(
+      (async () => {
+        const blob = await buildSolutionZipBlob({
+          paths,
+          rootFolderName: rootFolder,
+          fetchFile: (p) => submissionSolutionsService.downloadFile(entry.id, p),
+        });
+        triggerBlobDownload(blob, zipName);
+      })(),
+      {
+        loading: `Đang tải ${paths.length} file và nén thành một file ZIP…`,
+        success: "Đã tải về một file ZIP (một thư mục gốc, giữ cấu trúc thư mục trong zip).",
+        error: (e) =>
+          e instanceof HttpRequestError ? e.message : e instanceof Error ? e.message : "Không tạo được ZIP.",
+      }
+    );
+  }, [entry, solutionBundle]);
 
   const onSave = useCallback(async () => {
     if (!entry || !Number.isFinite(examinerId)) {
@@ -338,32 +389,20 @@ export function ExaminerEntryGradingPage() {
             <FileStack className="size-5" />
             File bài làm
           </CardTitle>
-          <CardDescription>Danh sách đường dẫn từ API — tải về để xem nội dung.</CardDescription>
+          <CardDescription>
+            Cây thư mục từ <code className="text-xs">GET /submission-solutions/…/files</code> — chỉ file (không phải
+            folder) mới tải được qua <code className="text-xs">download?filePath=</code> (đúng chuỗi path trong zip).
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingDetail ? (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" />
-              Đang tải danh sách file…
-            </p>
-          ) : files.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Không có file.</p>
-          ) : (
-            <ul className="space-y-2">
-              {files.map((fp) => (
-                <li
-                  key={fp}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
-                >
-                  <span className="font-mono text-xs break-all">{fp}</span>
-                  <Button type="button" size="sm" variant="outline" onClick={() => void onDownload(fp)}>
-                    <Download className="size-4" />
-                    Tải
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <SolutionFilesExplorer
+            loading={loadingDetail}
+            solutionFiles={solutionBundle?.solutionFiles ?? []}
+            attachments={solutionBundle?.attachments ?? []}
+            onDownloadSolutionFile={onDownloadSolutionFile}
+            onDownloadAttachment={onDownloadAttachment}
+            onDownloadAllFiles={onDownloadAllSolutionFiles}
+          />
         </CardContent>
       </Card>
 
