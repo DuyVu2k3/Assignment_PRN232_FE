@@ -11,6 +11,7 @@ import {
   mockGradeRubricScores,
 } from "../../data/mockData";
 import { useAuthStore } from "../../store/authStore";
+import { UserRole } from "../../types/enums";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { ArrowLeft, Download, Save, Table2 } from "lucide-react";
@@ -62,7 +63,7 @@ export function BatchGradingPage() {
 
   const batch = batchId ? getSubmissionBatchById(batchId) : undefined;
   const examinerBlocked =
-    user?.role === "Examiner" &&
+    user?.role === UserRole.Examiner &&
     batch != null &&
     batchId != null &&
     user != null &&

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { usersService, type UserListItem } from "../../api/services";
+import { UserRole } from "../../types/enums";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -79,22 +80,22 @@ export function UsersPage() {
 
   const roleCounts = useMemo(() => {
     return {
-      admin: users.filter((u) => u.role === "Admin").length,
-      manager: users.filter((u) => u.role === "Manager").length,
-      examiner: users.filter((u) => u.role === "Examiner").length,
-      moderator: users.filter((u) => u.role === "Moderator").length,
+      admin: users.filter((u) => u.role === UserRole.Admin).length,
+      manager: users.filter((u) => u.role === UserRole.Manager).length,
+      examiner: users.filter((u) => u.role === UserRole.Examiner).length,
+      moderator: users.filter((u) => u.role === UserRole.Moderator).length,
     };
   }, [users]);
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "Admin":
+      case UserRole.Admin:
         return <Badge variant="destructive">Admin</Badge>;
-      case "Manager":
+      case UserRole.Manager:
         return <Badge variant="default">Manager</Badge>;
-      case "Examiner":
+      case UserRole.Examiner:
         return <Badge variant="secondary">Examiner</Badge>;
-      case "Moderator":
+      case UserRole.Moderator:
         return <Badge variant="outline">Moderator</Badge>;
       default:
         return <Badge>{role}</Badge>;

@@ -7,6 +7,7 @@ import {
   type ExamExaminerAssignment,
   type UserListItem,
 } from "../../api/services";
+import { UserRole } from "../../types/enums";
 import { useAuthStore } from "../../store/authStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -73,7 +74,7 @@ export function AssignExaminerByExamPage() {
 
       const examList = Array.isArray(examsResult) ? examsResult : [];
       setExams(examList);
-      setExaminers((usersResult.data ?? []).filter((item) => item.role === "Examiner"));
+      setExaminers((usersResult.data ?? []).filter((item) => item.role === UserRole.Examiner));
 
       if (!selectedExamId && examList.length > 0) {
         setSelectedExamId(String(examList[0].id));

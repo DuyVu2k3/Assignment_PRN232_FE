@@ -1,10 +1,11 @@
 import { buildUsersUrl } from '../config/usersApiConfig';
+import type { UserRole } from '../../types/enums';
 
 export interface UserListItem {
   id: number;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'Examiner' | string;
+  role: UserRole | string;
   isActive: boolean;
   createdAt: string;
 }

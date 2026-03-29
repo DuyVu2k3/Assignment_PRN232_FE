@@ -1,6 +1,6 @@
 import { type ComponentType } from "react";
 import { createBrowserRouter } from "react-router";
-import type { UserRole } from "./api/services/authService";
+import { UserRole } from "./types/enums";
 import { RequireRoles } from "./components/auth/RequireRoles";
 import { RootLayout } from "./components/layouts/RootLayout";
 import { LoginPage } from "./components/pages/LoginPage";
@@ -32,12 +32,12 @@ import { UnauthorizedPage } from "./components/pages/UnauthorizedPage";
 import { ForbiddenPage } from "./components/pages/ForbiddenPage";
 
 const R = {
-  admin: ["Admin"] as const satisfies readonly UserRole[],
-  manager: ["Manager"] as const satisfies readonly UserRole[],
-  moderator: ["Moderator"] as const satisfies readonly UserRole[],
-  examiner: ["Examiner"] as const satisfies readonly UserRole[],
-  exams: ["Admin", "Manager"] as const satisfies readonly UserRole[],
-  submissions: ["Admin", "Manager", "Examiner"] as const satisfies readonly UserRole[],
+  admin: [UserRole.Admin] as const satisfies readonly UserRole[],
+  manager: [UserRole.Manager] as const satisfies readonly UserRole[],
+  moderator: [UserRole.Moderator] as const satisfies readonly UserRole[],
+  examiner: [UserRole.Examiner] as const satisfies readonly UserRole[],
+  exams: [UserRole.Admin, UserRole.Manager] as const satisfies readonly UserRole[],
+  submissions: [UserRole.Admin, UserRole.Manager, UserRole.Examiner] as const satisfies readonly UserRole[],
 };
 
 function withRoles(roles: readonly UserRole[], Page: ComponentType) {

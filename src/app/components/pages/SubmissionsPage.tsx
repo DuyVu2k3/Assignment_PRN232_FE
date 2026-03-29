@@ -35,6 +35,7 @@ import {
   DialogClose,
 } from "../ui/dialog";
 import { vi } from "date-fns/locale";
+import { SubmissionEntryStatus } from "../../types/enums";
 
 export function SubmissionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,11 +62,11 @@ export function SubmissionsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Pending":
+      case SubmissionEntryStatus.Pending:
         return <Badge variant="warning">Chờ chấm</Badge>;
-      case "Grading":
+      case SubmissionEntryStatus.Grading:
         return <Badge variant="default">Đang chấm</Badge>;
-      case "Graded":
+      case SubmissionEntryStatus.Graded:
         return <Badge variant="success">Đã chấm</Badge>;
       default:
         return <Badge>{status}</Badge>;
@@ -80,17 +81,17 @@ export function SubmissionsPage() {
     },
     {
       label: "Chờ chấm",
-      value: mockSubmissions.filter((s) => s.status === "Pending").length,
+      value: mockSubmissions.filter((s) => s.status === SubmissionEntryStatus.Pending).length,
       color: "text-orange-600",
     },
     {
       label: "Đang chấm",
-      value: mockSubmissions.filter((s) => s.status === "Grading").length,
+      value: mockSubmissions.filter((s) => s.status === SubmissionEntryStatus.Grading).length,
       color: "text-blue-600",
     },
     {
       label: "Đã chấm",
-      value: mockSubmissions.filter((s) => s.status === "Graded").length,
+      value: mockSubmissions.filter((s) => s.status === SubmissionEntryStatus.Graded).length,
       color: "text-green-600",
     },
   ];
@@ -244,9 +245,9 @@ export function SubmissionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="Pending">Chờ chấm</SelectItem>
-            <SelectItem value="Grading">Đang chấm</SelectItem>
-            <SelectItem value="Graded">Đã chấm</SelectItem>
+            <SelectItem value={SubmissionEntryStatus.Pending}>Chờ chấm</SelectItem>
+            <SelectItem value={SubmissionEntryStatus.Grading}>Đang chấm</SelectItem>
+            <SelectItem value={SubmissionEntryStatus.Graded}>Đã chấm</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline">
@@ -295,7 +296,7 @@ export function SubmissionsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {submission.status !== "Graded" && (
+                      {submission.status !== SubmissionEntryStatus.Graded && (
                         <Link to={`/submissions/${submission.id}/grade`} state={{ from: "/submissions" }}>
                           <Button variant="outline" size="sm">
                             Chấm điểm

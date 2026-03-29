@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -10,8 +11,12 @@ import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 import { User, Lock, Mail, Calendar, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { UserRole } from "../../types/enums";
 
 export function ProfilePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") === "security" ? "security" : "profile";
+
   const user = useAuthStore((state) => state.user);
   const updateProfile = useAuthStore((state) => state.updateProfile);
   const changePassword = useAuthStore((state) => state.changePassword);
@@ -57,13 +62,13 @@ export function ProfilePage() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case "Admin":
+      case UserRole.Admin:
         return "bg-red-100 text-red-700 hover:bg-red-100";
-      case "Manager":
+      case UserRole.Manager:
         return "bg-blue-100 text-blue-700 hover:bg-blue-100";
-      case "Examiner":
+      case UserRole.Examiner:
         return "bg-green-100 text-green-700 hover:bg-green-100";
-      case "Moderator":
+      case UserRole.Moderator:
         return "bg-amber-100 text-amber-800 hover:bg-amber-100";
       default:
         return "bg-gray-100 text-gray-700 hover:bg-gray-100";
@@ -158,7 +163,14 @@ export function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs
+        value={tabFromUrl}
+        onValueChange={(v) => {
+          if (v === "security") setSearchParams({ tab: "security" });
+          else setSearchParams({});
+        }}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="size-4" />
@@ -166,7 +178,7 @@ export function ProfilePage() {
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Lock className="size-4" />
-            Bảo mật
+            Đổi mật khẩu
           </TabsTrigger>
         </TabsList>
 

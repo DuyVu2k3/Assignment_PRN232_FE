@@ -11,10 +11,11 @@ import {
   TableRow,
 } from "../ui/table";
 import { AlertTriangle } from "lucide-react";
+import { ViolationSeverity } from "../../types/enums";
 
-const severityVariant = (s: string) => {
-  if (s === "error") return "destructive" as const;
-  if (s === "warning") return "warning" as const;
+const severityVariant = (s: ViolationSeverity | string) => {
+  if (s === ViolationSeverity.Error) return "destructive" as const;
+  if (s === ViolationSeverity.Warning) return "warning" as const;
   return "secondary" as const;
 };
 

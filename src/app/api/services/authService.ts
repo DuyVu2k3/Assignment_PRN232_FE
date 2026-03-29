@@ -1,7 +1,8 @@
 import { buildAuthUrl, type AuthEndpointKey } from '../config/authApiConfig';
 import { requestJson } from '../http/requestJson';
+import { UserRole } from '../../types/enums';
 
-export type UserRole = 'Admin' | 'Manager' | 'Examiner' | 'Moderator';
+export { UserRole };
 
 export interface AuthUser {
   id: string | number;

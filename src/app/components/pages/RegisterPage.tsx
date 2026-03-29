@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/button";
@@ -8,8 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { GraduationCap, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-
-type RoleOption = "Admin" | "Manager" | "Examiner" | "Moderator";
+import { UserRole } from "../../types/enums";
 
 export function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -17,7 +16,7 @@ export function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "Examiner" as RoleOption,
+    role: UserRole.Examiner,
   });
   const [isLoading, setIsLoading] = useState(false);
   const register = useAuthStore((state) => state.register);
@@ -98,16 +97,16 @@ export function RegisterPage() {
               <Label htmlFor="role">Vai trò</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value as RoleOption })}
+                onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
               >
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Examiner">Examiner (Giáo viên chấm thi)</SelectItem>
-                  <SelectItem value="Manager">Manager (Quản lý)</SelectItem>
-                  <SelectItem value="Moderator">Moderator (Upload & kiểm duyệt)</SelectItem>
-                  <SelectItem value="Admin">Admin (Quản trị viên)</SelectItem>
+                  <SelectItem value={UserRole.Examiner}>Examiner (Giáo viên chấm thi)</SelectItem>
+                  <SelectItem value={UserRole.Manager}>Manager (Quản lý)</SelectItem>
+                  <SelectItem value={UserRole.Moderator}>Moderator (Upload & kiểm duyệt)</SelectItem>
+                  <SelectItem value={UserRole.Admin}>Admin (Quản trị viên)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
