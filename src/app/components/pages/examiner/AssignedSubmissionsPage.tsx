@@ -1,13 +1,11 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import {
-  formatExamPeriod,
-  getBatchesForExaminer,
-  getEntriesForBatch,
-  getSubmissionFileById,
-  getRubricsForExam,
-  mockExams,
-} from "../../../data/mockData";
+import { HttpRequestError } from "../../../api/http/requestJson";
+import { examinerEntriesService, type ExaminerMeBatchGroup } from "../../../api/services";
 import { useAuthStore } from "../../../store/authStore";
+import { SubmissionBatchPipelineStatus } from "../../../types/enums";
+import { cn } from "../../../lib/utils";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import {
@@ -18,104 +16,224 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import { ClipboardList, Table2 } from "lucide-react";
+import { ClipboardList, Loader2, Table2 } from "lucide-react";
+import { toast } from "sonner";
+
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleString("vi-VN");
+};
+
+const batchStatusBadge = (status: number) => {
+  switch (status) {
+    case SubmissionBatchPipelineStatus.Failed:
+      return { label: "Lỗi", variant: "destructive" as const };
+    case SubmissionBatchPipelineStatus.Completed:
+      return { label: "Hoàn tất", variant: "success" as const };
+    case SubmissionBatchPipelineStatus.Processing:
+      return { label: "Đang xử lý", variant: "default" as const };
+    case SubmissionBatchPipelineStatus.PendingExtraction:
+      return { label: "Chờ giải nén", variant: "warning" as const };
+    default:
+      return { label: `Batch ${status}`, variant: "secondary" as const };
+  }
+};
+
+/** Map entry.status (số) — bổ sung khi backend có thêm mã. */
+const entryStatusBadge = (status: number) => {
+  switch (status) {
+    case 0:
+      return { label: "Chờ", variant: "secondary" as const };
+    case 1:
+      return { label: "Sẵn sàng", variant: "success" as const };
+    case 2:
+      return { label: "Lỗi", variant: "destructive" as const };
+    default:
+      return { label: `Trạng thái ${status}`, variant: "outline" as const };
+  }
+};
 
 export function AssignedSubmissionsPage() {
   const user = useAuthStore((s) => s.user);
-  const uid = user ? String(user.id) : "";
-  const batches = uid ? getBatchesForExaminer(uid) : [];
+
+  const [groups, setGroups] = useState<ExaminerMeBatchGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await examinerEntriesService.getMyEntries();
+      setGroups(data);
+      setSelectedBatchId((prev) => {
+        if (prev !== null && data.some((g) => g.batchId === prev)) {
+          return prev;
+        }
+        return data[0]?.batchId ?? null;
+      });
+    } catch (err) {
+      const msg = err instanceof HttpRequestError ? err.message : "Không tải được danh sách được phân.";
+      toast.error(msg);
+      setGroups([]);
+      setSelectedBatchId(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const selectedGroup = useMemo(
+    () => groups.find((g) => g.batchId === selectedBatchId) ?? null,
+    [groups, selectedBatchId]
+  );
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-6xl">
       <div>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Table2 className="size-7 text-muted-foreground" />
-          Danh sách bài được phân — chấm (rubric)
+          Bài được phân công
         </h1>
         <p className="text-gray-600 mt-1 text-sm">
-          Bước 1: chọn batch. Bước 2: bảng điểm có cột <strong>StudentCode</strong> và các tiêu chí do{" "}
-          <strong>Manager</strong> cấu hình. Nhập điểm như Excel (Tab), rồi <strong>Lưu điểm</strong>.
+          Bước 1: chọn batch ở cột trái. Bước 2: chọn entry — <strong>Mở chấm</strong> để nhập điểm theo rubric (
+          Tab giữa các ô) và lưu qua API <code className="text-xs bg-muted px-1 rounded">POST /grade-entries</code>.
         </p>
       </div>
 
       {!user ? (
         <p className="text-sm text-muted-foreground">Đang tải thông tin đăng nhập…</p>
-      ) : batches.length === 0 ? (
+      ) : loading ? (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" />
+          Đang tải danh sách được phân…
+        </div>
+      ) : groups.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Chưa có batch được phân</CardTitle>
             <CardDescription>
-              Khi Manager gán bạn cho một batch hoặc cho cả kỳ thi, batch sẽ hiện ở đây (mock: kiểm tra{" "}
-              <span className="font-mono">mockAssignedExaminers</span> và user id khớp examiner).
+              Khi Manager gán bạn cho batch, dữ liệu sẽ hiện từ{" "}
+              <code className="text-xs">GET /api/examiners/me/entries</code>.
             </CardDescription>
           </CardHeader>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="size-5" />
-              Batch của bạn
-            </CardTitle>
-            <CardDescription>Chọn batch để mở bảng điểm theo rubric.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Batch</TableHead>
-                  <TableHead>Kỳ thi</TableHead>
-                  <TableHead>Tiêu chí</TableHead>
-                  <TableHead>File nộp</TableHead>
-                  <TableHead>Số SV</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {batches.map((b) => {
-                  const exam = mockExams.find((e) => e.id === b.examId);
-                  const file = getSubmissionFileById(b.submissionFileId);
-                  const entries = getEntriesForBatch(b.id);
-                  const rubricCount = exam ? getRubricsForExam(exam.id).length : 0;
-                  return (
-                    <TableRow key={b.id}>
-                      <TableCell className="font-mono">{b.id}</TableCell>
-                      <TableCell>
-                        {exam ? (
-                          <>
-                            <span className="font-medium">{exam.title}</span>
-                            <span className="block text-xs text-muted-foreground">
-                              {formatExamPeriod(exam)}
-                            </span>
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {rubricCount > 0 ? `${rubricCount} tiêu chí` : "—"}
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[200px] truncate font-mono text-xs"
-                        title={file?.originalFileName}
-                      >
-                        {file?.originalFileName ?? "—"}
-                      </TableCell>
-                      <TableCell>{entries.length}</TableCell>
-                      <TableCell className="text-right">
-                        <Link to={`/batches/${b.id}/grade`} state={{ from: "/assigned-submissions" }}>
-                          <Button size="sm" type="button">
-                            Mở bảng chấm
-                          </Button>
-                        </Link>
-                      </TableCell>
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          <aside className="w-full lg:w-80 shrink-0 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Batch</p>
+            <ul className="space-y-2">
+              {groups.map((g) => {
+                const bs = batchStatusBadge(g.batch.status);
+                const active = g.batchId === selectedBatchId;
+                return (
+                  <li key={g.batchId}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBatchId(g.batchId)}
+                      className={cn(
+                        "w-full text-left rounded-lg border px-3 py-2.5 transition-colors",
+                        active ? "border-blue-600 bg-blue-50/80 shadow-sm" : "border-border hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="font-medium text-sm line-clamp-2">{g.batch.examTitle}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Nộp {formatDateTime(g.batch.uploadedAt)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <Badge variant={bs.variant}>{bs.label}</Badge>
+                        <Badge variant="secondary">{g.entries.length} SV</Badge>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+
+          <Card className="flex-1 min-w-0 w-full">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClipboardList className="size-5" />
+                Entry trong batch đã chọn
+              </CardTitle>
+              <CardDescription>
+                {selectedGroup ? (
+                  <>
+                    <span className="font-medium text-foreground">{selectedGroup.batch.examTitle}</span>
+                    {" · "}
+                    Hạn thi {formatDateTime(selectedGroup.batch.examDueDate)}
+                  </>
+                ) : (
+                  "Chọn một batch."
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              {!selectedGroup ? (
+                <p className="text-sm text-muted-foreground">Không có batch được chọn.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Mã SV</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead className="text-right">Vi phạm</TableHead>
+                      <TableHead className="text-right">Tài nguyên</TableHead>
+                      <TableHead>Đã chấm</TableHead>
+                      <TableHead className="text-right" />
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedGroup.entries.map((e) => {
+                      const es = entryStatusBadge(e.status);
+                      return (
+                        <TableRow key={e.id}>
+                          <TableCell className="font-medium">{e.studentCode}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant={es.variant}>{es.label}</Badge>
+                              {e.violationCount > 0 ? (
+                                <Badge variant="warning">Có vi phạm</Badge>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{e.violationCount}</TableCell>
+                          <TableCell className="text-right tabular-nums">{e.assetCount}</TableCell>
+                          <TableCell>
+                            {e.myGrade ? (
+                              <Badge variant="success">
+                                {e.myGrade.totalScore} điểm · {formatDateTime(e.myGrade.gradedAt)}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Chưa</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" type="button" asChild>
+                              <Link
+                                to={`/assigned-submissions/entries/${e.id}/grade`}
+                                state={{
+                                  examId: selectedGroup.batch.examId,
+                                  batchId: selectedGroup.batchId,
+                                }}
+                              >
+                                Mở chấm
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

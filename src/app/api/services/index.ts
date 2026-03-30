@@ -15,3 +15,7 @@ export * from './rubricsService';
 export * from './examExaminersService';
 export * from './submissionFilesService';
 export * from './assignedExaminerService';
+export * from './submissionBatchesService';
+export * from './gradeEntriesService';
+export * from './examinerEntriesService';
+export * from './submissionSolutionsService';

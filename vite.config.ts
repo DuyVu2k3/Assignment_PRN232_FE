@@ -59,12 +59,42 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/submission-batches': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/submission-batches': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/grade-entries': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/grade-entries': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
       '/assigned-examiners': {
         target: 'http://localhost:7003',
         changeOrigin: true,
         secure: false,
       },
       '/api/assigned-examiners': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/examiners': {
+        target: 'http://localhost:7003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/submission-solutions': {
         target: 'http://localhost:7003',
         changeOrigin: true,
         secure: false,
