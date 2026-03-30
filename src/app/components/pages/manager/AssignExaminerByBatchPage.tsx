@@ -3,9 +3,11 @@ import {
   assignedExaminerService,
   examsService,
   usersService,
+  submissionBatchesService,
   type AssignedExaminerRecord,
   type Exam,
   type UserListItem,
+  type SubmissionBatchListItem,
 } from "../../../api/services";
 import { UserRole } from "../../../types/enums";
 import { useAuthStore } from "../../../store/authStore";
@@ -42,6 +44,7 @@ export function AssignExaminerByBatchPage() {
   const token = useAuthStore((state) => state.token);
   const [exams, setExams] = useState<Exam[]>([]);
   const [examiners, setExaminers] = useState<UserListItem[]>([]);
+  const [batches, setBatches] = useState<SubmissionBatchListItem[]>([]);
   const [assignments, setAssignments] = useState<AssignedExaminerRecord[]>([]);
 
   const [assignBatchId, setAssignBatchId] = useState("");
@@ -74,14 +77,16 @@ export function AssignExaminerByBatchPage() {
   const loadBaseData = async () => {
     setIsLoadingBaseData(true);
     try {
-      const [examsResult, usersResult] = await Promise.all([
+      const [examsResult, usersResult, batchesResult] = await Promise.all([
         examsService.getExams(),
         usersService.getUsers({ pageNumber: 1, pageSize: 100, token: token ?? undefined }),
+        submissionBatchesService.getSubmissionBatches(),
       ]);
 
       const examList = Array.isArray(examsResult) ? examsResult : [];
       setExams(examList);
       setExaminers((usersResult.data ?? []).filter((item) => item.role === UserRole.Examiner));
+      setBatches(Array.isArray(batchesResult) ? batchesResult : []);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không tải được dữ liệu gốc");
     } finally {
@@ -185,14 +190,23 @@ export function AssignExaminerByBatchPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Batch ID</p>
-              <Input
-                type="number"
-                min={1}
-                value={assignBatchId}
-                onChange={(e) => setAssignBatchId(e.target.value)}
-                placeholder="Nhập submissionBatchId"
-              />
+              <p className="text-sm text-gray-600">Batch</p>
+              <Select value={assignBatchId} onValueChange={setAssignBatchId}>
+                <SelectTrigger disabled={isLoadingBaseData}>
+                  <SelectValue placeholder={isLoadingBaseData ? "Đang tải batches..." : "Chọn batch"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {batches.length === 0 ? (
+                    <SelectItem value="none" disabled>(Không có batch)</SelectItem>
+                  ) : (
+                    batches.map((b) => (
+                      <SelectItem key={b.id} value={String(b.id)}>
+                        Batch #{b.id} — Exam {b.examId} — {new Date(b.uploadedAt).toLocaleString()}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
