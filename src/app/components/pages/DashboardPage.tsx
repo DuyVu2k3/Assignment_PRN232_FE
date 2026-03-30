@@ -1,3 +1,13 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { HttpRequestError } from "../../api/http/requestJson";
+import {
+  examsService,
+  submissionBatchesService,
+  gradeEntriesService,
+  examinerEntriesService,
+} from "../../api/services";
+import { UserRole } from "../../types/enums";
 import { useAuthStore } from "../../store/authStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { FileText, Upload, CheckCircle, Clock } from "lucide-react";
@@ -5,7 +15,7 @@ import { FileText, Upload, CheckCircle, Clock } from "lucide-react";
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user);
 
-  const stats = [
+  const [stats, setStats] = useState(() => [
     {
       title: "Tổng số kỳ thi",
       value: "--",
@@ -34,7 +44,52 @@ export function DashboardPage() {
       color: "text-orange-600",
       bg: "bg-orange-50",
     },
-  ];
+  ]);
+
+  const isExaminer = useMemo(() => user?.role === UserRole.Examiner, [user?.role]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [exams, batches] = await Promise.all([
+          examsService.getExams(),
+          submissionBatchesService.getSubmissionBatches(),
+        ]);
+
+        const nextStats = [...stats];
+        nextStats[0] = { ...nextStats[0], value: String(exams?.length ?? 0) };
+        nextStats[1] = { ...nextStats[1], value: String(batches?.length ?? 0) };
+
+        if (isExaminer) {
+          const groups = await examinerEntriesService.getMyEntries();
+          const allEntries = groups.flatMap((g) => g.entries ?? []);
+          const gradedCount = allEntries.filter((e) => e.myGrade != null).length;
+          const pendingCount = Math.max(0, allEntries.length - gradedCount);
+
+          nextStats[2] = { ...nextStats[2], value: String(gradedCount) };
+          nextStats[3] = { ...nextStats[3], value: String(pendingCount) };
+        } else {
+          // Với manager/admin: show tổng số grade entries (nếu backend hỗ trợ tổng qua totalItems).
+          const res = await gradeEntriesService.getGradeEntries({ pageNumber: 1, pageSize: 1 });
+          nextStats[2] = { ...nextStats[2], value: String(res.totalItems ?? 0) };
+          nextStats[3] = { ...nextStats[3], value: "--" };
+        }
+
+        if (!cancelled) setStats(nextStats);
+      } catch (err) {
+        if (cancelled) return;
+        const msg = err instanceof HttpRequestError ? err.message : "Không tải được dashboard.";
+        toast.error(msg);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isExaminer]);
 
   return (
     <div className="space-y-6">
