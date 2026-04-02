@@ -25,8 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../ui/select";
-import { ChevronLeft, ChevronRight, History, Loader2, RefreshCw } from "lucide-react";
+import { Input } from "../../ui/input";
+import { ChevronLeft, ChevronRight, Download, History, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 const formatDateTime = (value: string) => {
   const d = new Date(value);
@@ -44,9 +46,16 @@ export function GradingHistoryPage() {
   const [paged, setPaged] = useState<PagedGradeEntriesResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMeta, setLoadingMeta] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const [selectedExam, setSelectedExam] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   /** submissionEntryId → hiển thị từ danh sách được phân (có thể thiếu với bản ghi cũ). */
-  const [entryMeta, setEntryMeta] = useState<Map<number, { studentCode: string; examTitle: string }>>(
+  const [entryMeta, setEntryMeta] = useState<
+    Map<number, { studentCode: string; examTitle: string; semesterId: number }>
+  >(
     () => new Map()
   );
 
@@ -54,11 +63,12 @@ export function GradingHistoryPage() {
     setLoadingMeta(true);
     try {
       const groups = await examinerEntriesService.getMyEntries();
-      const m = new Map<number, { studentCode: string; examTitle: string }>();
+      const m = new Map<number, { studentCode: string; examTitle: string; semesterId: number }>();
       for (const g of groups) {
         const examTitle = g.batch.examTitle;
+        const semesterId = g.batch.semesterId;
         for (const e of g.entries) {
-          m.set(e.id, { studentCode: e.studentCode, examTitle });
+          m.set(e.id, { studentCode: e.studentCode, examTitle, semesterId });
         }
       }
       setEntryMeta(m);
@@ -106,6 +116,132 @@ export function GradingHistoryPage() {
   const hasPrevious = paged?.hasPrevious ?? false;
   const hasNext = paged?.hasNext ?? false;
 
+  const examOptions = useMemo(() => {
+    return [...new Set([...entryMeta.values()].map((m) => m.examTitle))].sort((a, b) =>
+      a.localeCompare(b, "vi")
+    );
+  }, [entryMeta]);
+
+  const fromDateValue = useMemo(() => {
+    if (!fromDate) return null;
+    const d = new Date(`${fromDate}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }, [fromDate]);
+
+  const toDateValue = useMemo(() => {
+    if (!toDate) return null;
+    const d = new Date(`${toDate}T23:59:59.999`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }, [toDate]);
+
+  const rowMatchesFilters = useCallback(
+    (row: GradeEntryRow) => {
+      const meta = entryMeta.get(row.submissionEntryId);
+
+      if (selectedExam !== "all" && meta?.examTitle !== selectedExam) {
+        return false;
+      }
+
+      if (!fromDateValue && !toDateValue) {
+        return true;
+      }
+
+      const gradedAt = new Date(row.gradedAt);
+      if (Number.isNaN(gradedAt.getTime())) {
+        return false;
+      }
+
+      if (fromDateValue && gradedAt < fromDateValue) {
+        return false;
+      }
+
+      if (toDateValue && gradedAt > toDateValue) {
+        return false;
+      }
+
+      return true;
+    },
+    [entryMeta, selectedExam, fromDateValue, toDateValue]
+  );
+
+  const filteredRows = useMemo(() => rows.filter(rowMatchesFilters), [rows, rowMatchesFilters]);
+
+  const handleExportExcel = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    if (fromDate && toDate && fromDate > toDate) {
+      toast.error("Khoảng ngày không hợp lệ: Từ ngày phải nhỏ hơn hoặc bằng đến ngày.");
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const allRows: GradeEntryRow[] = [];
+      const exportPageSize = 200;
+      let currentPage = 1;
+
+      while (true) {
+        const res = await examinerEntriesService.getMyGradeHistory({
+          pageNumber: currentPage,
+          pageSize: exportPageSize,
+        });
+
+        allRows.push(...res.data);
+
+        if (!res.hasNext || currentPage >= Math.max(1, res.totalPages)) {
+          break;
+        }
+        currentPage += 1;
+      }
+
+      const exportRows = allRows.filter(rowMatchesFilters);
+      if (exportRows.length === 0) {
+        toast.info("Không có dữ liệu phù hợp bộ lọc để xuất Excel.");
+        return;
+      }
+
+      const data = exportRows.map((row, index) => {
+        const meta = entryMeta.get(row.submissionEntryId);
+        return {
+          STT: index + 1,
+          MaSV: meta?.studentCode ?? "",
+          KyThi: meta?.examTitle ?? "",
+          KyHoc: meta?.semesterId ?? "",
+          EntryId: row.submissionEntryId,
+          Diem: row.score,
+          GhiChu: row.notes ?? "",
+          ThoiDiemCham: formatDateTime(row.gradedAt),
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      worksheet["!cols"] = [
+        { wch: 6 },
+        { wch: 14 },
+        { wch: 30 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 36 },
+        { wch: 24 },
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "LichSuCham");
+
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+      XLSX.writeFile(workbook, `grading-history-${timestamp}.xlsx`);
+      toast.success(`Đã xuất ${exportRows.length} bản ghi ra Excel.`);
+    } catch (err) {
+      const msg = err instanceof HttpRequestError ? err.message : "Xuất Excel thất bại.";
+      toast.error(msg);
+    } finally {
+      setExporting(false);
+    }
+  }, [entryMeta, fromDate, rowMatchesFilters, toDate, user]);
+
   const emptyMessage = useMemo(() => {
     if (!user) return "Chưa đăng nhập.";
     return null;
@@ -142,7 +278,7 @@ export function GradingHistoryPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={loading || loadingMeta}
+                  disabled={loading || loadingMeta || exporting}
                   onClick={() => {
                     void loadEntryMeta();
                     void loadRows();
@@ -154,6 +290,22 @@ export function GradingHistoryPage() {
                     <RefreshCw className="size-4" />
                   )}
                   Làm mới
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={loading || loadingMeta || exporting}
+                  onClick={() => {
+                    void handleExportExcel();
+                  }}
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                  Xuất Excel
                 </Button>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">Số dòng / trang</span>
@@ -179,6 +331,49 @@ export function GradingHistoryPage() {
               </div>
             </CardHeader>
             <CardContent>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mb-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Kỳ thi</p>
+                  <Select value={selectedExam} onValueChange={setSelectedExam}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tất cả kỳ thi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả kỳ thi</SelectItem>
+                      {examOptions.map((exam) => (
+                        <SelectItem key={exam} value={exam}>
+                          {exam}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Từ ngày</p>
+                  <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    max={toDate || undefined}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Đến ngày</p>
+                  <Input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    min={fromDate || undefined}
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3 text-xs text-muted-foreground">
+                Đang hiển thị {filteredRows.length}/{rows.length} bản ghi trên trang hiện tại theo bộ lọc. Nút xuất Excel sẽ xuất toàn bộ lịch sử đã lọc.
+              </div>
+
               {loading && !paged ? (
                 <div className="flex items-center gap-2 text-muted-foreground py-10 justify-center">
                   <Loader2 className="size-5 animate-spin" />
@@ -198,14 +393,14 @@ export function GradingHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.length === 0 ? (
+                    {filteredRows.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                           Chưa có bản ghi chấm điểm nào.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      rows.map((row) => {
+                      filteredRows.map((row) => {
                         const meta = entryMeta.get(row.submissionEntryId);
                         return (
                           <TableRow key={row.id}>
